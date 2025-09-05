@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pandas as pd
 
-from pipeline.ingest.cli import MappingSpec, apply_latest_wins_priority, normalize_projections
+from pipeline.ingest.cli import (
+    MappingSpec,
+    apply_latest_wins_priority,
+    normalize_projections,
+)
 
 
 def test_latest_wins_tiebreaker() -> None:
@@ -18,10 +22,36 @@ def test_latest_wins_tiebreaker() -> None:
             "FP": [48.2, 47.0],
         }
     )
-    mapping = MappingSpec(name="ex", header_map={"DK_ID": "dk_player_id", "Name": "name", "Team": "team", "Pos": "pos", "Salary": "salary", "Minutes": "minutes", "FP": "proj_fp"}, source_fields=["DK_ID", "Name", "Team", "Pos", "Salary", "Minutes", "FP"])
+    mapping = MappingSpec(
+        name="ex",
+        header_map={
+            "DK_ID": "dk_player_id",
+            "Name": "name",
+            "Team": "team",
+            "Pos": "pos",
+            "Salary": "salary",
+            "Minutes": "minutes",
+            "FP": "proj_fp",
+        },
+        source_fields=["DK_ID", "Name", "Team", "Pos", "Salary", "Minutes", "FP"],
+    )
 
-    df1 = normalize_projections(data.iloc[[0]], mapping, "20251101_NBA", "other", updated_ts="2025-11-01T16:00:00.000Z", content_sha256="a" * 64)
-    df2 = normalize_projections(data.iloc[[1]], mapping, "20251101_NBA", "manual", updated_ts="2025-11-01T15:59:00.000Z", content_sha256="b" * 64)
+    df1 = normalize_projections(
+        data.iloc[[0]],
+        mapping,
+        "20251101_NBA",
+        "other",
+        updated_ts="2025-11-01T16:00:00.000Z",
+        content_sha256="a" * 64,
+    )
+    df2 = normalize_projections(
+        data.iloc[[1]],
+        mapping,
+        "20251101_NBA",
+        "manual",
+        updated_ts="2025-11-01T15:59:00.000Z",
+        content_sha256="b" * 64,
+    )
     combined = pd.concat([df1, df2], ignore_index=True)
 
     # Although manual has earlier timestamp, precedence should beat others on tie-break when timestamps equal; but here latest timestamp wins.
@@ -35,8 +65,9 @@ def test_latest_wins_tiebreaker() -> None:
     df1_same.loc[:, "updated_ts"] = "2025-11-01T16:00:00.000Z"
     df2_same = df2.copy()
     df2_same.loc[:, "updated_ts"] = "2025-11-01T16:00:00.000Z"
-    deduped2 = apply_latest_wins_priority(pd.concat([df1_same, df2_same], ignore_index=True))
+    deduped2 = apply_latest_wins_priority(
+        pd.concat([df1_same, df2_same], ignore_index=True)
+    )
     assert len(deduped2) == 1
     # manual should beat other on tie
     assert deduped2.iloc[0]["source"] == "manual"
-
