@@ -177,7 +177,7 @@ def build_manifest(
     config: Dict[str, Any],
 ) -> Dict[str, Any]:
     return {
-        "schema_version": "0.2.0",
+        "schema_version": "0.2.1",
         "run_id": run_id,
         "run_type": RunTypeForSchema,
         "slate_id": slate_id,

@@ -69,4 +69,4 @@ def test_ingest_cli_smoke(tmp_path: Path) -> None:
     manifest_path = run_dirs[0] / "manifest.json"
     assert manifest_path.exists()
     manifest = json.loads(manifest_path.read_text())
-    assert manifest["run_id"] and manifest["schema_version"] == "0.2.0"
+    assert manifest["run_id"] and manifest["schema_version"] == "0.2.1"
