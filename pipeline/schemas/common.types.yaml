@@ -1,0 +1,78 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/common.types.yaml"
+title: "Common Types for NBA-DFS"
+description: "Reusable enums, regexes, and shared definitions for NBA-DFS schemas."
+type: object
+additionalProperties: false
+version: "0.2.0"
+definitions:
+  PosEnum:
+    type: string
+    description: "DraftKings roster positions."
+    enum: [PG, SG, SF, PF, C, G, F, UTIL]
+
+  SiteEnum:
+    type: string
+    enum: [DK]
+
+  RunTypeEnum:
+    type: string
+    enum: [ingest, optimizer, variants, field, sim]
+
+  RunId:
+    type: string
+    description: "Stable run identifier: YYYYMMDD_HHMMSS_<shorthash> (lowercase hex/alpha). Example: 20251101_180000_deadbee"
+    pattern: "^\\d{8}_\\d{6}_[a-z0-9]{6,10}$"
+
+  UtcTimestamp:
+    type: string
+    description: "UTC ISO-8601 timestamp (YYYY-MM-DDTHH:mm:ss.sssZ)."
+    pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?Z$"
+
+  GameDate:
+    type: string
+    description: "Game date (YYYY-MM-DD)."
+    pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+
+  TeamCode:
+    type: string
+    description: "Team abbreviation (2–4 uppercase letters, e.g., BOS)."
+    pattern: "^[A-Z]{2,4}$"
+
+  DKDollars:
+    type: integer
+    description: "Money in DK dollars (whole integers)."
+    minimum: 0
+
+  Probability:
+    type: number
+    minimum: 0
+    maximum: 1
+
+  SHA256:
+    type: string
+    description: "Hex SHA-256 (64 lowercase hex chars)."
+    pattern: "^[a-f0-9]{64}$"
+
+  SlateId:
+    type: string
+    description: "Slate identifier like 20251101_NBA."
+    pattern: "^\\d{8}_NBA$"
+
+  DKCompositePosition:
+    type: string
+    description: "Single or composite DK positions like PG or PG/SF."
+    pattern: "^([A-Z]{2,3})(/[A-Z]{2,3})*$"
+
+  HistogramBin:
+    type: object
+    additionalProperties: false
+    properties:
+      bin_start:
+        type: number
+      bin_end:
+        type: number
+      count:
+        type: integer
+        minimum: 0
+    required: [bin_start, bin_end, count]

@@ -1,0 +1,41 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/projections_raw.schema.yaml"
+title: "Projections (Raw Upload)"
+description: "Lenient typed container for raw projection uploads. Free-form 'raw' payload is preserved."
+version: "0.1.0"
+type: object
+additionalProperties: false
+properties:
+  slate_id:
+    $ref: "./common.types.yaml#/definitions/SlateId"
+  source:
+    type: string
+    minLength: 1
+  uploaded_ts:
+    $ref: "./common.types.yaml#/definitions/UtcTimestamp"
+  csv_filename:
+    type: string
+    minLength: 1
+  raw:
+    type: object
+    description: "Free-form key/values from original upload."
+    additionalProperties: true
+  content_sha256:
+    $ref: "./common.types.yaml#/definitions/SHA256"
+required: [slate_id, source, uploaded_ts, csv_filename, raw, content_sha256]
+examples:
+  - slate_id: "20251101_NBA"
+    source: "manual"
+    uploaded_ts: "2025-11-01T15:00:00.000Z"
+    csv_filename: "projections_20251101.csv"
+    raw:
+      columns: ["Name", "Team", "Salary", "FP"]
+      sample_row: { Name: "Player A", Team: "BOS", Salary: 5400, FP: 32.1 }
+    content_sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  - # invalid: missing raw
+    slate_id: "20251101_NBA"
+    source: "manual"
+    uploaded_ts: "2025-11-01T15:00:00.000Z"
+    csv_filename: "projections_20251101.csv"
+    content_sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+

@@ -1,0 +1,13 @@
+name: example_source
+map:
+  DK_ID: dk_player_id
+  Name: name
+  Team: team
+  Pos: pos
+  Salary: salary
+  Minutes: minutes
+  FP: proj_fp
+  Ceil: ceil_fp
+  Floor: floor_fp
+  Own: own_proj
+

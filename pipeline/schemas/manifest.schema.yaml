@@ -1,0 +1,90 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/manifest.schema.yaml"
+title: "Run Manifest"
+description: "Per-run manifest capturing inputs, outputs, and metadata."
+version: "0.2.0"
+type: object
+additionalProperties: false
+properties:
+  schema_version:
+    type: string
+  run_id:
+    $ref: "./common.types.yaml#/definitions/RunId"
+  run_type:
+    $ref: "./common.types.yaml#/definitions/RunTypeEnum"
+  slate_id:
+    $ref: "./common.types.yaml#/definitions/SlateId"
+  created_ts:
+    $ref: "./common.types.yaml#/definitions/UtcTimestamp"
+  inputs:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      properties:
+        path: { type: string }
+        content_sha256: { $ref: "./common.types.yaml#/definitions/SHA256" }
+        role:
+          type: string
+          enum: [projections_normalized, players, variants, field, contest_structure, config]
+      required: [path, content_sha256, role]
+  config:
+    type: object
+    additionalProperties: true
+  outputs:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      properties:
+        path: { type: string }
+        kind:
+          type: string
+          description: "Schema kind for the output artifact."
+          enum:
+            [
+              players,
+              slates,
+              projections_raw,
+              projections_normalized,
+              optimizer_lineups,
+              optimizer_metrics,
+              variant_catalog,
+              variant_metrics,
+              field,
+              field_metrics,
+              contest_structure,
+              sim_results,
+              sim_metrics,
+              runs_registry,
+            ]
+      required: [path, kind]
+  tags:
+    type: array
+    items: { type: string }
+  git_rev:
+    type: string
+  notes:
+    type: string
+required: [schema_version, run_id, run_type, slate_id, created_ts, inputs]
+examples:
+  - schema_version: "0.2.0"
+    run_id: "20251101_180000_deadbee"
+    run_type: "ingest"
+    slate_id: "20251101_NBA"
+    created_ts: "2025-11-01T18:00:00.000Z"
+    inputs:
+      - { path: "data/processed/current/projections.parquet", content_sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", role: "projections_normalized" }
+    config: { seed: 42, max_lineups: 150 }
+    outputs:
+      - { path: "runs/25-11-01_180000/optimizer/artifacts/lineups.parquet", kind: "optimizer_lineups" }
+    tags: ["main"]
+    git_rev: "deadbeef"
+  - # invalid: missing content_sha256 in inputs
+    schema_version: "0.2.0"
+    run_id: "20251101_180000_deadbee"
+    run_type: "ingest"
+    slate_id: "20251101_NBA"
+    created_ts: "2025-11-01T18:00:00.000Z"
+    inputs:
+      - { path: "data/processed/current/projections.parquet", role: "projections_normalized" }

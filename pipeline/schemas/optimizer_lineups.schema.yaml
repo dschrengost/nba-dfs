@@ -1,0 +1,82 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/optimizer_lineups.schema.yaml"
+title: "Optimizer Lineups"
+description: "Lineups produced by the optimizer for a specific run."
+version: "0.1.0"
+type: object
+additionalProperties: false
+properties:
+  run_id:
+    $ref: "./common.types.yaml#/definitions/RunId"
+  lineup_id:
+    type: string
+    minLength: 1
+  players:
+    type: array
+    minItems: 8
+    maxItems: 8
+    items:
+      type: string
+      description: "dk_player_id"
+  dk_positions_filled:
+    type: array
+    minItems: 8
+    maxItems: 8
+    items:
+      type: object
+      additionalProperties: false
+      properties:
+        slot:
+          type: string
+          description: "Roster slot label (e.g., PG, SG, SF, PF, C, G, F, UTIL)."
+        position:
+          $ref: "./common.types.yaml#/definitions/PosEnum"
+      required: [slot, position]
+  total_salary:
+    allOf:
+      - $ref: "./common.types.yaml#/definitions/DKDollars"
+      - type: integer
+        maximum: 50000
+  proj_fp:
+    type: number
+    minimum: 0
+  ceil_fp:
+    type: number
+    minimum: 0
+    description: ">= proj_fp (enforce in validator)."
+  own_proj:
+    $ref: "./common.types.yaml#/definitions/Probability"
+  export_csv_row:
+    type: string
+    description: "Exact DK lineup upload CSV row preview. See README 'DK CSV Export' for header/order."
+  tags:
+    type: array
+    items: { type: string }
+required: [run_id, lineup_id, players, dk_positions_filled, total_salary, proj_fp, export_csv_row]
+examples:
+  - run_id: "run_20251101_opt_001"
+    lineup_id: "L1"
+    players: ["p1","p2","p3","p4","p5","p6","p7","p8"]
+    dk_positions_filled:
+      - { slot: "PG", position: "PG" }
+      - { slot: "SG", position: "SG" }
+      - { slot: "SF", position: "SF" }
+      - { slot: "PF", position: "PF" }
+      - { slot: "C",  position: "C" }
+      - { slot: "G",  position: "G" }
+      - { slot: "F",  position: "F" }
+      - { slot: "UTIL", position: "UTIL" }
+    total_salary: 49800
+    proj_fp: 278.4
+    ceil_fp: 310.0
+    own_proj: 0.12
+    export_csv_row: "PG p1,SG p2,SF p3,PF p4,C p5,G p6,F p7,UTIL p8"
+  - # invalid: wrong number of players
+    run_id: "run_20251101_opt_001"
+    lineup_id: "L2"
+    players: ["p1"]
+    dk_positions_filled: []
+    total_salary: 60000
+    proj_fp: 100
+    export_csv_row: "..."
+    ceil_fp: 50

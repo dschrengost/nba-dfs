@@ -1,0 +1,247 @@
+PRP: Pipeline Schema Pack (SSOT)
+
+0) Objective
+
+Create a complete, versioned set of schemas that define the single source of truth (SSOT) for the NBA-DFS pipeline. These schemas are the contracts for every stage (ingest → normalize → optimize → variants → field → sim). They must be strict enough to catch errors and stable enough to enable reproducible runs.
+
+⸻
+
+1) Scope & Deliverables
+
+1.1 Files to produce (no implementation code)
+
+Place all files under pipeline/schemas/.
+	•	README.md (overview + usage + change log rules)
+	•	common.types.yaml (reusable type aliases, enums, regexes)
+	•	Entity schemas
+	•	players.schema.yaml
+	•	slates.schema.yaml
+	•	projections_raw.schema.yaml
+	•	projections_normalized.schema.yaml
+	•	optimizer_lineups.schema.yaml
+	•	optimizer_metrics.schema.yaml
+	•	variant_catalog.schema.yaml
+	•	variant_metrics.schema.yaml
+	•	field.schema.yaml
+	•	field_metrics.schema.yaml
+	•	contest_structure.schema.yaml
+	•	sim_results.schema.yaml
+	•	sim_metrics.schema.yaml
+	•	Run control
+	•	manifest.schema.yaml
+	•	runs_registry.schema.yaml
+
+All schemas must include: $schema, title, description, version, type, properties, required, additionalProperties (false), and examples (non-executable, illustrative).
+
+1.2 Supported storage targets
+	•	Primary: Parquet tables (DuckDB-compatible)
+	•	Secondary: JSON/CSV exporters must map 1:1 with these schemas
+
+⸻
+
+2) Global Conventions (apply to all schemas)
+	•	Primary identity: dk_player_id (string, DK canonical ID) travels end-to-end.
+	•	Timestamps: UTC ISO-8601 (YYYY-MM-DDTHH:mm:ss.sssZ).
+	•	Money: integers in DK dollars (e.g., salary: 5400), never floats.
+	•	Floats: use number with explicit ranges; probabilities in [0,1].
+	•	Strictness: additionalProperties: false everywhere.
+	•	Enums: positions {PG, SG, SF, PF, C, G, F, UTIL}; site {DK}; run types {optimizer,variants,field,sim}.
+	•	Lists: preserve order where semantically meaningful (e.g., players in a lineup).
+	•	Lineage: any normalization must carry a lineage object (source, mapping notes, hash).
+	•	Hashing: content_sha256 recorded for inputs used by a run.
+	•	Versioning: version field in each schema and schema_version in manifests.
+
+⸻
+
+3) Schema Definitions (field-level contracts)
+
+Below are the required fields and constraints. The agent will encode these into YAML/JSON-Schema.
+
+3.1 players.schema.yaml
+	•	dk_player_id (string, pk)
+	•	name (string, non-empty)
+	•	team (string, 2–4 chars, e.g., BOS)
+	•	pos_eligible (array[string], items in POS enum, 1–3 items)
+	•	notes (string, optional)
+	•	first_seen_ts (string, timestamp)
+	•	last_seen_ts (string, timestamp)
+
+3.2 slates.schema.yaml
+	•	slate_id (string, pattern ^\d{8}_NBA$, pk e.g., 20251101_NBA)
+	•	site (enum: DK)
+	•	game_date (string, date YYYY-MM-DD)
+	•	created_ts (string, timestamp)
+
+3.3 projections_raw.schema.yaml (as uploaded; lenient but typed)
+	•	slate_id (string)
+	•	source (string)
+	•	uploaded_ts (string, timestamp)
+	•	csv_filename (string)
+	•	raw (object) – free-form key/values preserved; no required shape
+	•	content_sha256 (string, 64 hex)
+
+3.4 projections_normalized.schema.yaml (canonical)
+	•	slate_id (string, matches slates)
+	•	source (string)
+	•	dk_player_id (string, fk→players)
+	•	name (string)
+	•	team (string)
+	•	pos (string, in POS enum or composite like PG/SF allowed via regex ^([A-Z]{2,3})(/[A-Z]{2,3})*$)
+	•	salary (integer, ≥ 3000, ≤ 20000)
+	•	minutes (number, ≥ 0, ≤ 60)
+	•	proj_fp (number, ≥ 0, ≤ 120)
+	•	ceil_fp (number, ≥ proj_fp, ≤ 120)
+	•	floor_fp (number, ≥ 0, ≤ proj_fp)
+	•	own_proj (number, ≥ 0, ≤ 1, optional)
+	•	updated_ts (string, timestamp)
+	•	lineage (object: {mapping: object, source_fields: array[string], content_sha256: string})
+
+3.5 optimizer_lineups.schema.yaml
+	•	run_id (string, fk→runs_registry)
+	•	lineup_id (string, unique per run)
+	•	players (array[string], length 8, all fk→players; UTIL allowed)
+	•	dk_positions_filled (array[object] per roster slot, positions in enum)
+	•	total_salary (integer, 50000 ± 0 tolerant with rule: ≤ 50000)
+	•	proj_fp (number, ≥ 0)
+	•	ceil_fp (number, ≥ proj_fp)
+	•	own_proj (number, ≥ 0, ≤ 1, optional)
+	•	export_csv_row (string, exact DK format preview)
+	•	tags (array[string], optional)
+
+3.6 optimizer_metrics.schema.yaml
+	•	run_id (string)
+	•	Aggregates: mean_proj, median_proj, stdev_proj, salary_utilization_mean, dupe_risk_index (number 0–1, optional), etc.
+	•	Distributions: bucketed histograms as arrays of {bin_start, bin_end, count} (validate monotonic bins)
+
+3.7 variant_catalog.schema.yaml
+	•	run_id (string, source optimizer run)
+	•	variant_id (string, unique per catalog)
+	•	parent_lineup_id (string, fk→optimizer_lineups)
+	•	players (array[string], length 8)
+	•	variant_params (object: parameterization used)
+	•	export_csv_row (string)
+	•	Optional similarity metrics: hamming_vs_parent (integer 0–8), salary_delta (integer), proj_delta (number)
+
+3.8 variant_metrics.schema.yaml
+	•	Standard aggregates + coverage: per-player inclusion rates, position coverage, 'chalk_index', 'entropy'
+
+3.9 field.schema.yaml
+	•	run_id (string, source variant run)
+	•	entrant_id (integer or string, unique within run)
+	•	origin (enum: variant|optimizer|external)
+	•	variant_id (string, optional if origin=optimizer)
+	•	lineup_id (string if origin=optimizer)
+	•	players (array[string], length 8)
+	•	export_csv_row (string)
+	•	Optional: weight (number ≥ 0), default 1
+
+3.10 field_metrics.schema.yaml
+	•	Coverage per player/team/position
+	•	Duplication risk estimates
+	•	Pairwise Jaccard summaries (validate 0–1)
+
+3.11 contest_structure.schema.yaml
+	•	contest_id (string)
+	•	name (string)
+	•	field_size (integer > 0)
+	•	payout_curve (array of {rank_start, rank_end, prize} with non-overlapping contiguous ranges; validate sum of ranks == field_size)
+	•	entry_fee (integer ≥ 0)
+	•	rake (number 0–1)
+	•	site (enum: DK)
+
+3.12 sim_results.schema.yaml
+	•	run_id (string, source field+contest)
+	•	world_id (integer, ≥ 0)
+	•	entrant_id (string/int, fk→field)
+	•	score (number)
+	•	rank (integer ≥ 1)
+	•	prize (integer ≥ 0)
+	•	Optional: components (object: breakdowns), seed (integer)
+
+3.13 sim_metrics.schema.yaml
+	•	EV/ROI per entrant and aggregates
+	•	Convergence stats (e.g., batch-world streaming; include rmse_by_batch)
+	•	Risk-adjusted metrics: sharpe, sortino (validate denominators > 0)
+
+3.14 manifest.schema.yaml (per run folder)
+	•	schema_version (string)
+	•	run_id (string, unique)
+	•	run_type (enum: optimizer|variants|field|sim)
+	•	slate_id (string)
+	•	created_ts (string)
+	•	inputs (array of {path, content_sha256, role}; roles: projections_normalized|players|variants|field|contest_structure|config)
+	•	config (object: full knobs dumped)
+	•	outputs (array of {path, kind}; kinds align with schema names)
+	•	tags (array[string])
+	•	git_rev (string, optional)
+	•	notes (string, optional)
+
+3.15 runs_registry.schema.yaml
+	•	run_id (string, pk)
+	•	run_type (enum)
+	•	slate_id (string)
+	•	status (enum: success|failed|running|unknown)
+	•	primary_outputs (array[string] paths)
+	•	metrics_path (string path)
+	•	created_ts (string)
+	•	tags (array[string])
+
+⸻
+
+4) Validation & Tooling Requirements
+	•	Provide a CLI validator stub spec (not implementation):
+	•	validate-table --schema pipeline/schemas/<name>.schema.yaml --input <parquet|json|csv>
+	•	Must fail on:
+	•	missing required fields
+	•	out-of-range values
+	•	additionalProperties
+	•	enum mismatches
+	•	roster invalidity (8 players, salary cap, positions)
+	•	Specify cross-table checks:
+	•	projections_normalized.dk_player_id ⊆ players.dk_player_id
+	•	Lineup/variant/field players all ∈ players table
+	•	Contest payout ranks sum equals field_size
+	•	Define priority resolution for projections (doc only):
+	•	Latest updated_ts wins per (slate_id, dk_player_id) with source precedence if tie: manual > primary_source > other.
+
+⸻
+
+5) Acceptance Criteria
+	1.	Completeness: All schemas and README delivered under pipeline/schemas/.
+	2.	Strictness: Each schema sets additionalProperties: false; required fields and enums defined; numeric ranges enforced.
+	3.	Examples: Each schema includes at least one minimal valid example and one invalid example (as YAML literals in comments or examples blocks).
+	4.	Interoperability notes: README states Parquet type mapping (lists, structs), and JSON/CSV export mapping.
+	5.	Cross-references: README documents foreign-key relationships and cross-table validations.
+	6.	DK compliance checks: Lineup roster constraints and export_csv_row documented precisely (header order, delimiter, utility slot handling).
+	7.	Versioning: Each schema carries a version. README explains bump rules (patch/minor/major) and change log format.
+	8.	Repo cleanliness: No executable code; schemas lint clean (yamllint baseline).
+
+⸻
+
+6) Out of Scope (for this PRP)
+	•	Implementing ingestion or adapters
+	•	Building the validator CLI/tooling
+	•	UI work or exporters
+	•	Non-DK sites
+
+⸻
+
+7) Task Breakdown (for the agent)
+	1.	Create directory & README.md scaffolding under pipeline/schemas/.
+	2.	Author common.types.yaml (enums, regexes, shared defs).
+	3.	Draft entity schemas (3.1–3.14) with examples.
+	4.	Draft runs_registry.schema.yaml.
+	5.	Write cross-ref & validation notes in README.
+	6.	Run schema lints (YAML syntax + JSON-Schema draft 2020-12 validity).
+	7.	Submit PR with:
+	•	File list
+	•	Brief change log
+	•	Evidence of lint passing (paste output)
+
+⸻
+
+8) Definition of Done (DoD)
+	•	All files listed in §1.1 exist with content meeting §5.
+	•	CI (or local lint) demonstrates schemas are syntactically valid.
+	•	README clearly explains how every pipeline artifact maps to a schema and how future contributors should evolve them.
+	•	A tiny golden dataset description (not data) is included in README to guide future test fixtures.

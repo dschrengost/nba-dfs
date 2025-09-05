@@ -1,0 +1,98 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/projections_normalized.schema.yaml"
+title: "Projections (Normalized)"
+description: "Canonical normalized projections for a slate and source. One row per (slate_id, dk_player_id, source). Priority: latest updated_ts wins; tie-breaker precedence: manual > primary_source > other (documented; enforce in adapter/validator)."
+version: "0.1.0"
+type: object
+additionalProperties: false
+properties:
+  slate_id:
+    $ref: "./common.types.yaml#/definitions/SlateId"
+  source:
+    type: string
+    minLength: 1
+  dk_player_id:
+    type: string
+    minLength: 1
+  name:
+    type: string
+    minLength: 1
+  team:
+    $ref: "./common.types.yaml#/definitions/TeamCode"
+  pos:
+    $ref: "./common.types.yaml#/definitions/DKCompositePosition"
+  salary:
+    allOf:
+      - $ref: "./common.types.yaml#/definitions/DKDollars"
+      - type: integer
+        minimum: 3000
+        maximum: 20000
+  minutes:
+    type: number
+    minimum: 0
+    maximum: 60
+  proj_fp:
+    type: number
+    minimum: 0
+    maximum: 120
+  ceil_fp:
+    type: number
+    minimum: 0
+    maximum: 120
+    description: ">= proj_fp; enforce in validator."
+  floor_fp:
+    type: number
+    minimum: 0
+    maximum: 120
+    description: "<= proj_fp; enforce in validator."
+  own_proj:
+    $ref: "./common.types.yaml#/definitions/Probability"
+  updated_ts:
+    $ref: "./common.types.yaml#/definitions/UtcTimestamp"
+  lineage:
+    type: object
+    additionalProperties: false
+    properties:
+      mapping:
+        type: object
+        additionalProperties: true
+      source_fields:
+        type: array
+        items: { type: string }
+      content_sha256:
+        $ref: "./common.types.yaml#/definitions/SHA256"
+    required: [mapping, source_fields, content_sha256]
+required: [slate_id, source, dk_player_id, name, team, pos, salary, minutes, proj_fp, updated_ts, lineage]
+examples:
+  - slate_id: "20251101_NBA"
+    source: "primary_source"
+    dk_player_id: "123456"
+    name: "Jayson Tatum"
+    team: "BOS"
+    pos: "SF/PF"
+    salary: 9800
+    minutes: 36
+    proj_fp: 48.2
+    ceil_fp: 60.0
+    floor_fp: 35.0
+    own_proj: 0.22
+    updated_ts: "2025-11-01T16:00:00.000Z"
+    lineage:
+      mapping: { Name: "name", Team: "team" }
+      source_fields: ["Name", "Team", "Salary", "FP"]
+      content_sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  - # invalid: salary too low, pos bad
+    slate_id: "20251101_NBA"
+    source: "primary_source"
+    dk_player_id: "123456"
+    name: "Jayson Tatum"
+    team: "BOS"
+    pos: "SF/XX"
+    salary: 2500
+    minutes: 36
+    proj_fp: 48.2
+    updated_ts: "2025-11-01T16:00:00.000Z"
+    lineage:
+      mapping: {}
+      source_fields: []
+      content_sha256: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"

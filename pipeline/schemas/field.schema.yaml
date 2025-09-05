@@ -1,0 +1,57 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/field.schema.yaml"
+title: "Field (Entrants)"
+description: "Simulated or observed field of entrants with lineups for a given run."
+version: "0.1.0"
+type: object
+additionalProperties: false
+properties:
+  run_id:
+    $ref: "./common.types.yaml#/definitions/RunId"
+  entrant_id:
+    oneOf:
+      - type: integer
+        minimum: 0
+      - type: string
+  origin:
+    type: string
+    enum: [variant, optimizer, external]
+  variant_id:
+    type: string
+  lineup_id:
+    type: string
+  players:
+    type: array
+    minItems: 8
+    maxItems: 8
+    items: { type: string }
+  export_csv_row:
+    type: string
+    description: "DK lineup upload CSV row preview. See README 'DK CSV Export' for header/order."
+  weight:
+    type: number
+    minimum: 0
+    default: 1
+required: [run_id, entrant_id, origin, players, export_csv_row]
+examples:
+  - run_id: "run_20251101_field_001"
+    entrant_id: 1
+    origin: "variant"
+    variant_id: "V1"
+    players: ["p1","p2","p3","p4","p5","p6","p7","p8"]
+    export_csv_row: "..."
+    weight: 1
+  - # invalid: negative weight
+    run_id: "run_20251101_field_001"
+    entrant_id: "A"
+    origin: "optimizer"
+    lineup_id: "L1"
+    players: ["p1","p2","p3","p4","p5","p6","p7","p8"]
+    export_csv_row: "..."
+    weight: -1
+  - # invalid: players length not 8
+    run_id: "20251101_180000_deadbee"
+    entrant_id: 2
+    origin: "external"
+    players: ["p1","p2"]
+    export_csv_row: "..."

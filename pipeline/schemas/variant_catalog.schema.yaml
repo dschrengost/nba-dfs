@@ -1,0 +1,51 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/variant_catalog.schema.yaml"
+title: "Variant Catalog"
+description: "Catalog of lineup variants derived from an optimizer run."
+version: "0.1.0"
+type: object
+additionalProperties: false
+properties:
+  run_id:
+    $ref: "./common.types.yaml#/definitions/RunId"
+  variant_id:
+    type: string
+  parent_lineup_id:
+    type: string
+  players:
+    type: array
+    minItems: 8
+    maxItems: 8
+    items: { type: string }
+  variant_params:
+    type: object
+    additionalProperties: true
+  export_csv_row:
+    type: string
+  hamming_vs_parent:
+    type: integer
+    minimum: 0
+    maximum: 8
+  salary_delta:
+    type: integer
+  proj_delta:
+    type: number
+required: [run_id, variant_id, parent_lineup_id, players, variant_params, export_csv_row]
+examples:
+  - run_id: "run_20251101_var_001"
+    variant_id: "V1"
+    parent_lineup_id: "L1"
+    players: ["p1","p2","p3","p4","p5","p6","p7","p8"]
+    variant_params: { swap: { out: "p3", in: "p9" } }
+    export_csv_row: "..."
+    hamming_vs_parent: 1
+    salary_delta: 300
+    proj_delta: -1.2
+  - # invalid: not enough players
+    run_id: "20251101_180000_deadbee"
+    variant_id: "V_bad"
+    parent_lineup_id: "L1"
+    players: ["p1","p2"]
+    variant_params: {}
+    export_csv_row: "..."
+    hamming_vs_parent: 9

@@ -1,0 +1,28 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/slates.schema.yaml"
+title: "Slates"
+description: "NBA slates metadata."
+version: "0.1.0"
+type: object
+additionalProperties: false
+properties:
+  slate_id:
+    $ref: "./common.types.yaml#/definitions/SlateId"
+  site:
+    $ref: "./common.types.yaml#/definitions/SiteEnum"
+  game_date:
+    $ref: "./common.types.yaml#/definitions/GameDate"
+  created_ts:
+    $ref: "./common.types.yaml#/definitions/UtcTimestamp"
+required: [slate_id, site, game_date, created_ts]
+examples:
+  - slate_id: "20251101_NBA"
+    site: "DK"
+    game_date: "2025-11-01"
+    created_ts: "2025-11-01T12:00:00.000Z"
+  - # invalid: wrong slate pattern
+    slate_id: "25-11-01_NBA"
+    site: "DK"
+    game_date: "2025-11-01"
+    created_ts: "2025-11-01T12:00:00.000Z"
+

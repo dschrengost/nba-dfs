@@ -1,0 +1,40 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/sim_metrics.schema.yaml"
+title: "Simulation Metrics"
+description: "Aggregates and convergence stats for a simulation run."
+version: "0.1.0"
+type: object
+additionalProperties: false
+properties:
+  run_id:
+    $ref: "./common.types.yaml#/definitions/RunId"
+  aggregates:
+    type: object
+    additionalProperties: false
+    properties:
+      ev_mean: { type: number }
+      roi_mean: { type: number }
+      sharpe: { type: number }
+      sortino: { type: number }
+    required: [ev_mean, roi_mean]
+  convergence:
+    type: object
+    additionalProperties: false
+    properties:
+      rmse_by_batch:
+        type: array
+        items:
+          $ref: "./common.types.yaml#/definitions/HistogramBin"
+required: [run_id]
+examples:
+  - run_id: "run_20251101_sim_001"
+    aggregates:
+      ev_mean: -1.5
+      roi_mean: -0.075
+      sharpe: 0.6
+    convergence:
+      rmse_by_batch: [ { bin_start: 0, bin_end: 1000, count: 1 } ]
+  - # invalid: aggregates missing required keys
+    run_id: "20251101_180000_deadbee"
+    aggregates: { ev_mean: 0.0 }
+    convergence: {}
