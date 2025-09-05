@@ -1,0 +1,30 @@
+# Field sampler defaults (adapter-level)
+# These are safe, commented examples; override via --config and/or --config-kv
+
+# Total entrants to sample (contest size)
+# field_size: 20000
+
+# How to mix sources when multiple catalogs provided (if supported by impl)
+# source_mix:
+#   variants: 1.0
+#   optimizer: 0.0
+
+# Sampling mode for catalog lineups
+# sampling_mode: iid  # one of [iid, weight_by_proj, weight_by_own, stratified]
+
+# Optional ownership curve to target (impl-defined)
+# ownership_curve:
+#   type: flat
+
+# Target diversity controls (impl-defined semantics)
+# diversity: 0.0
+
+# Team limits and stacks (soft/hard semantics up to impl)
+# team_limits:
+#   max_from_team: 3
+
+# De-duplicate exact lineups by sorted player set
+# de-dup: true
+
+# RNG seed (threaded through and included in run_id hash)
+# seed: 42

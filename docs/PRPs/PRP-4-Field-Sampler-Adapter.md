@@ -17,6 +17,10 @@ PRP Start → branch=feature/field-sampler-adapter
 
 ## Scope & Deliverables
 
+Add a line under Scope & Deliverables → Adapter module:
+
+Default implementation: use processes/field_sampler/_legacy/field_sampler_functional.py (function run_sampler) unless FIELD_SAMPLER_IMPL override is provided.
+
 ### 1) Adapter module
 ```
 processes/field_sampler/
