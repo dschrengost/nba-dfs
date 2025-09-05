@@ -1,0 +1,19 @@
+# GPP Simulator defaults (PRP-5)
+#
+# Recognized knobs
+# - num_trials: Monte Carlo trials (int)
+# - projection_model: which column(s) to use for scoring (str)
+# - boom_bust: stochastic model parameters (mapping)
+# - dup_penalty: de-duplication treatment in payouts (float|mapping)
+# - late_swap: enable late swap modeling (bool)
+# - min_cash_prob: report min cash probability / ROI (bool)
+# - seed: RNG seed (int)
+
+num_trials: 10
+projection_model: mean
+boom_bust: {}
+dup_penalty: 0.0
+late_swap: false
+min_cash_prob: false
+seed: 42
+
