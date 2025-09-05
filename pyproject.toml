@@ -1,0 +1,12 @@
+[project]
+name = "nba-dfs"
+version = "0.1.0"
+description = "NBA DFS pipeline"
+authors = [{ name="Daniel Schrengost" }]
+dependencies = [
+  "pandas",
+  "duckdb",
+  "pyarrow",
+  "pydantic",
+  "streamlit",
+]
