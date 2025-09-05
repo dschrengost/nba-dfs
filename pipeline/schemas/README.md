@@ -82,3 +82,4 @@ Change Log Template
 Changelog
 - 0.1.0: Initial schema pack scaffolding
 - 0.2.0: Add RunTypeEnum value `ingest`; bump manifest and runs_registry versions; align examples
+- 0.2.1: Extend manifest.inputs.role enum to include `optimizer_lineups` (additive)
