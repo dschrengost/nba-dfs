@@ -1,6 +1,7 @@
 [project]
 name = "nba-dfs"
 version = "0.1.0"
+requires-python = ">=3.11,<3.12"
 description = "NBA DFS pipeline"
 authors = [{ name="Daniel Schrengost" }]
 dependencies = [
@@ -29,10 +30,18 @@ dev = [
 [tool.black]
 line-length = 88
 target-version = ["py310", "py311", "py312"]
+extend-exclude = '''
+(
+  processes/optimizer/_legacy/
+  | frontend/
+  | app/streamlit/
+)
+'''
 
 [tool.ruff]
 line-length = 88
 target-version = "py310"
+extend-exclude = ["processes/optimizer/_legacy", "frontend", "app/streamlit"]
 
 [tool.ruff.lint]
 select = [
@@ -47,19 +56,36 @@ ignore = []
 [tool.ruff.lint.isort]
 known-first-party = ["pipeline", "processes", "app"]
 
+
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 strict = true
+pretty = true
+show_error_codes = true
 warn_unused_ignores = true
 warn_redundant_casts = true
 warn_return_any = true
 disallow_subclassing_any = true
 disallow_any_generics = true
 no_implicit_optional = true
-pretty = true
-show_error_codes = true
 ignore_missing_imports = true
-files = ["tests"]
+follow_imports = "skip"
+files = ["processes/optimizer/adapter.py"]
+exclude = "(?x)(^processes/optimizer/_legacy/|^frontend/|^app/streamlit/)"
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+warn_unused_ignores = false
+warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = [
+  "processes.optimizer._legacy",
+  "processes.optimizer._legacy.*",
+]
+ignore_errors = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

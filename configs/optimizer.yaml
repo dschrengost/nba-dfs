@@ -1,0 +1,48 @@
+# Example optimizer configuration (adapter consumes this and maps to constraints)
+
+# Core knobs
+num_lineups: 20
+max_salary: 50000
+# min_salary: 49000  # optional
+uniques: 2
+
+# Player controls
+lock: []      # e.g., ["12345678", "23456789"] dk_player_id
+ban: []       # e.g., ["34567890"]
+
+# Exposures (examples)
+# exposure_caps:
+#   players:
+#     "12345678": { max: 0.5 }   # 50%
+#   teams:
+#     BOS: { max: 3 }
+#   positions:
+#     C: { max: 2 }
+
+# Grouping / stacking (shape is solver-dependent, passed through)
+# group_rules:
+#   - name: "No double C"
+#     type: max
+#     positions: ["C"]
+#     max_from_group: 1
+
+# Ownership penalty (if solver supports it)
+ownership_penalty:
+  enabled: false
+  mode: sigmoid
+  lambda: 1.0
+
+# Team constraints
+max_from_team: 3
+min_from_team: 0
+
+# Randomness / solver params
+randomness: 0.0
+cp_sat_params:
+  # max_time_seconds: 0.7
+  # relative_gap_limit: 0.001
+  # num_search_workers: 0
+  # log_search_progress: false
+
+# Site-specific (DK only for now)
+dk_strict_mode: false

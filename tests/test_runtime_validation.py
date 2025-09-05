@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import shutil
+from pathlib import Path
 
 
 def test_runtime_validation_blocks_on_schema_mismatch(tmp_path: Path) -> None:
@@ -13,7 +12,9 @@ def test_runtime_validation_blocks_on_schema_mismatch(tmp_path: Path) -> None:
 
     # Overwrite common.types.yaml to drop 'ingest' from RunTypeEnum
     common = (schemas_dst / "common.types.yaml").read_text()
-    common = common.replace("[ingest, optimizer, variants, field, sim]", "[optimizer, variants, field, sim]")
+    common = common.replace(
+        "[ingest, optimizer, variants, field, sim]", "[optimizer, variants, field, sim]"
+    )
     (schemas_dst / "common.types.yaml").write_text(common)
 
     out_root = tmp_path / "out"
@@ -48,4 +49,3 @@ def test_runtime_validation_blocks_on_schema_mismatch(tmp_path: Path) -> None:
     assert not (out_root / "registry").exists()
     assert not (out_root / "projections").exists()
     assert not (out_root / "reference").exists()
-

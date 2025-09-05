@@ -20,24 +20,26 @@ def _effective_p(p: float, p0: float, gamma: float, lo: float, hi: float) -> flo
 
 def _g_curve(p_eff: float, settings: Dict) -> float:
     """Calculate penalty curve value for effective ownership percentage"""
-    curve_type = settings.get('curve_type', 'sigmoid')
-    
+    curve_type = settings.get("curve_type", "sigmoid")
+
     if curve_type == "linear":
         return p_eff
     elif curve_type == "power":
-        power_k = settings.get('power_k', 1.5)
-        return p_eff ** power_k
+        power_k = settings.get("power_k", 1.5)
+        return p_eff**power_k
     elif curve_type == "neglog":
         return -math.log(max(1e-9, 1.0 - p_eff))
     else:  # Default: sigmoid
         eps = 1e-9
-        pivot_p0 = settings.get('pivot_p0', 0.20)
-        curve_alpha = settings.get('curve_alpha', 2.0)
+        pivot_p0 = settings.get("pivot_p0", 0.20)
+        curve_alpha = settings.get("curve_alpha", 2.0)
         ratio = pivot_p0 / max(eps, p_eff)
-        return 1.0 / (1.0 + (ratio ** curve_alpha))
+        return 1.0 / (1.0 + (ratio**curve_alpha))
 
 
-def _effective_lambda(lambda_ui: float, mode: str, df, normalization_diag: Optional[Dict] = None) -> Tuple[float, float]:
+def _effective_lambda(
+    lambda_ui: float, mode: str, df, normalization_diag: Optional[Dict] = None
+) -> Tuple[float, float]:
     """
     Compute effective lambda to use against normalized ownership [0,1].
     - If data appear normalized (own_max <= 1) OR normalization_diag indicates scaled_by=100, use UI value as-is.
@@ -45,7 +47,11 @@ def _effective_lambda(lambda_ui: float, mode: str, df, normalization_diag: Optio
     Returns (lambda_eff, scale_used).
     """
     try:
-        own_max = float(df["own_proj"].max()) if hasattr(df, "__getitem__") and "own_proj" in df.columns else None
+        own_max = (
+            float(df["own_proj"].max())
+            if hasattr(df, "__getitem__") and "own_proj" in df.columns
+            else None
+        )
     except Exception:
         own_max = None
 
@@ -67,11 +73,11 @@ def _effective_lambda(lambda_ui: float, mode: str, df, normalization_diag: Optio
 def _calculate_ownership_penalty_term(own_pct: float, settings: Dict) -> float:
     """Calculate ownership penalty term for a single player"""
     p_eff = _effective_p(
-        own_pct, 
-        settings.get('pivot_p0', 0.20), 
-        settings.get('shrink_gamma', 1.0),
-        settings.get('clamp_min', 0.01), 
-        settings.get('clamp_max', 0.80)
+        own_pct,
+        settings.get("pivot_p0", 0.20),
+        settings.get("shrink_gamma", 1.0),
+        settings.get("clamp_min", 0.01),
+        settings.get("clamp_max", 0.80),
     )
     return _g_curve(p_eff, settings)
 
@@ -80,8 +86,7 @@ def _calculate_ownership_penalty_term(own_pct: float, settings: Dict) -> float:
 # PRP-OWN-19/22: Input Contract + Objective Telemetry (Wiring Check)
 # ============================================================================
 def _run_input_contract_and_objective_telemetry(
-    spec: Any,
-    ownership_penalty: Optional[Dict]
+    spec: Any, ownership_penalty: Optional[Dict]
 ) -> Dict[str, Any]:
     """Validate the exact inputs used by CP-SAT and print objective scaling telemetry.
 
@@ -97,15 +102,23 @@ def _run_input_contract_and_objective_telemetry(
     # Build a DataFrame from spec.players (this is the exact candidate set)
     rows = []
     for p in spec.players:
-        rows.append({
-            "player_id": p.player_id,
-            "name": p.name,
-            "team": p.team,
-            "position": "/".join(p.positions) if isinstance(p.positions, (list, tuple)) else str(p.positions),
-            "salary": p.salary,
-            "FPts": float(p.proj),
-            "own_proj": None if getattr(p, 'own_proj', None) is None else float(p.own_proj),
-        })
+        rows.append(
+            {
+                "player_id": p.player_id,
+                "name": p.name,
+                "team": p.team,
+                "position": (
+                    "/".join(p.positions)
+                    if isinstance(p.positions, (list, tuple))
+                    else str(p.positions)
+                ),
+                "salary": p.salary,
+                "FPts": float(p.proj),
+                "own_proj": (
+                    None if getattr(p, "own_proj", None) is None else float(p.own_proj)
+                ),
+            }
+        )
     df = _pd.DataFrame(rows)
     # Ensure numeric ownership column for normalization logic
     try:
@@ -120,7 +133,9 @@ def _run_input_contract_and_objective_telemetry(
         raise AssertionError(f"[INPUT CONTRACT] Missing columns: {missing}")
 
     # Ownership normalization: normalize in-place on the exact inputs to CP-SAT
-    own_max_before = float(df["own_proj"].max()) if df["own_proj"].notna().any() else 0.0
+    own_max_before = (
+        float(df["own_proj"].max()) if df["own_proj"].notna().any() else 0.0
+    )
     scaled_by = 1.0
     if own_max_before > 1.5:
         # Percent scale detected → convert to [0,1]
@@ -139,7 +154,10 @@ def _run_input_contract_and_objective_telemetry(
 
     # Propagate normalized ownership back into spec.players so the objective uses it
     try:
-        own_map = {r["player_id"]: (None if _pd.isna(r["own_proj"]) else float(r["own_proj"])) for _, r in df.iterrows()}
+        own_map = {
+            r["player_id"]: (None if _pd.isna(r["own_proj"]) else float(r["own_proj"]))
+            for _, r in df.iterrows()
+        }
         for p in spec.players:
             if p.player_id in own_map:
                 p.own_proj = own_map[p.player_id]
@@ -179,7 +197,7 @@ def _run_input_contract_and_objective_telemetry(
             lambda_ui,
             ownership_penalty.get("mode", "by_points"),
             df,
-            {"ownership": {"scaled_by": scaled_by}}
+            {"ownership": {"scaled_by": scaled_by}},
         )
         if lambda_eff > 0 and df["own_proj"].notna().any():
             settings = ownership_penalty
@@ -192,7 +210,11 @@ def _run_input_contract_and_objective_telemetry(
                 pen_sum += _calculate_ownership_penalty_term(own_pct, settings)
             lambda_penalty_scaled_total = int(round(SCALE * lambda_eff * pen_sum))
 
-    ratio = (lambda_penalty_scaled_total / (points_scaled_total + 1e-9)) if points_scaled_total else 0.0
+    ratio = (
+        (lambda_penalty_scaled_total / (points_scaled_total + 1e-9))
+        if points_scaled_total
+        else 0.0
+    )
     print(
         f"[OBJ] SCALE={SCALE} lambda_ui={lambda_ui:.3f} lambda_eff={lambda_eff:.3f} "
         f"points_scaled_total={points_scaled_total} "
@@ -223,12 +245,19 @@ def _run_input_contract_and_objective_telemetry(
     }
     # Optional artifact export (env-gated)
     try:
-        if str(_os.environ.get("DFS_WRITE_CONTRACT_ARTIFACTS", "0")).lower() in ("1", "true", "yes"):
-            out_dir = _os.path.join("src", "exports", f"run_{_time.strftime('%Y%m%d_%H%M%S')}")
+        if str(_os.environ.get("DFS_WRITE_CONTRACT_ARTIFACTS", "0")).lower() in (
+            "1",
+            "true",
+            "yes",
+        ):
+            out_dir = _os.path.join(
+                "src", "exports", f"run_{_time.strftime('%Y%m%d_%H%M%S')}"
+            )
             _os.makedirs(out_dir, exist_ok=True)
             df.to_csv(_os.path.join(out_dir, "projections_used.csv"), index=False)
             with open(_os.path.join(out_dir, "contract.txt"), "w") as f:
-                f.write(f"""run={RUN_ID}
+                f.write(
+                    f"""run={RUN_ID}
 contract={contract_hash}
 own_min={own_min}
 own_max={own_max}
@@ -239,9 +268,11 @@ lambda_eff={lambda_eff}
 points_scaled_total={points_scaled_total}
 lambda_penalty_scaled_total={lambda_penalty_scaled_total}
 ratio={ratio}
-""")
+"""
+                )
             try:
                 import json as _json
+
                 with open(_os.path.join(out_dir, "telemetry.json"), "w") as jf:
                     _json.dump(payload, jf, indent=2)
             except Exception:
@@ -298,6 +329,7 @@ def build_cpsat(spec: Any):
     # Pre-bucket once for speed & clarity
     slot_vars: Dict[str, List[Any]] = {pos: [] for pos in DK_SLOTS}
     from collections import defaultdict as _dd
+
     team_vars: Dict[str, List[Any]] = _dd(list)
     for (pid, pos), var in x.items():
         if pos in slot_vars:
@@ -307,8 +339,7 @@ def build_cpsat(spec: Any):
     # Preflight infeasibility checks (fast fail before adding constraints)
     # 1) Ensure each roster slot has at least one eligible candidate
     slot_candidates = {
-        pos: [pid for (pid, p) in x.keys() if p == pos]
-        for pos in spec.roster_slots
+        pos: [pid for (pid, p) in x.keys() if p == pos] for pos in spec.roster_slots
     }
     for pos, cands in slot_candidates.items():
         if not cands:
@@ -348,6 +379,7 @@ def build_cpsat(spec: Any):
 
     # Each player at most once
     from collections import defaultdict
+
     per_player = defaultdict(list)
     for (pid, pos), var in x.items():
         per_player[pid].append(var)
@@ -374,7 +406,9 @@ def build_cpsat(spec: Any):
     for pid in spec.lock_ids:
         vars_ = [x[(pid, pos)] for pos in DK_SLOTS if (pid, pos) in x]
         if not vars_:
-            raise ValueError(f"Locked player {pid} has no eligible positions for site {spec.site}.")
+            raise ValueError(
+                f"Locked player {pid} has no eligible positions for site {spec.site}."
+            )
         m.AddExactlyOne(vars_)
     for pid in spec.ban_ids:
         vars_ = [x[(pid, pos)] for pos in DK_SLOTS if (pid, pos) in x]
@@ -384,13 +418,15 @@ def build_cpsat(spec: Any):
     # Objective (PRP-16): projected points with optional ownership penalty
     SCALE = 1000
     obj_terms = []
-    use_penalty = bool(spec.ownership_penalty and spec.ownership_penalty.get('enabled', False))
+    use_penalty = bool(
+        spec.ownership_penalty and spec.ownership_penalty.get("enabled", False)
+    )
     lam = 0.0
     settings = None
     if use_penalty:
         settings = spec.ownership_penalty
         try:
-            lam = float(settings.get('weight_lambda', 0.0) or 0.0)
+            lam = float(settings.get("weight_lambda", 0.0) or 0.0)
         except Exception:
             lam = 0.0
 
@@ -398,7 +434,7 @@ def build_cpsat(spec: Any):
         base_proj = float(pid_to_player[pid].proj)
         eff_proj = base_proj
         if use_penalty and lam > 0:
-            own_val = getattr(pid_to_player[pid], 'own_proj', None)
+            own_val = getattr(pid_to_player[pid], "own_proj", None)
             if own_val is not None:
                 own_pct = (own_val / 100.0) if own_val > 1.0 else float(own_val)
                 pen = lam * _calculate_ownership_penalty_term(own_pct, settings)  # type: ignore[arg-type]
@@ -419,6 +455,7 @@ def build_cpsat_counts(spec):
     Objective: maximize projected points (scaled integers)
     """
     from ortools.sat.python import cp_model
+
     m = cp_model.CpModel()
     pid2 = {p.player_id: p for p in spec.players}
     y = {pid: m.NewBoolVar(f"y_{pid}") for pid in pid2}
@@ -432,18 +469,18 @@ def build_cpsat_counts(spec):
         m.Add(sum(pid2[pid].salary * y[pid] for pid in y) >= spec.min_salary)
 
     # base elig sets
-    PG = {pid for pid,p in pid2.items() if "PG" in p.positions}
-    SG = {pid for pid,p in pid2.items() if "SG" in p.positions}
-    SF = {pid for pid,p in pid2.items() if "SF" in p.positions}
-    PF = {pid for pid,p in pid2.items() if "PF" in p.positions}
-    C  = {pid for pid,p in pid2.items() if "C"  in p.positions}
+    PG = {pid for pid, p in pid2.items() if "PG" in p.positions}
+    SG = {pid for pid, p in pid2.items() if "SG" in p.positions}
+    SF = {pid for pid, p in pid2.items() if "SF" in p.positions}
+    PF = {pid for pid, p in pid2.items() if "PF" in p.positions}
+    C = {pid for pid, p in pid2.items() if "C" in p.positions}
 
     if spec.site == "dk":
         m.Add(sum(y[pid] for pid in PG) >= 1)
         m.Add(sum(y[pid] for pid in SG) >= 1)
         m.Add(sum(y[pid] for pid in SF) >= 1)
         m.Add(sum(y[pid] for pid in PF) >= 1)
-        m.Add(sum(y[pid] for pid in C)  >= 1)
+        m.Add(sum(y[pid] for pid in C) >= 1)
         # G/F requirements
         m.Add(sum(y[pid] for pid in (PG | SG)) >= 1)
         m.Add(sum(y[pid] for pid in (SF | PF)) >= 1)
@@ -471,51 +508,63 @@ def build_cpsat_counts(spec):
             raise ValueError(f"Locked player {pid} missing from candidate set.")
         m.Add(y[pid] == 1)
     for pid in spec.ban_ids:
-        if pid in y: m.Add(y[pid] == 0)
+        if pid in y:
+            m.Add(y[pid] == 0)
 
     # objective (PRP-16: with ownership penalty support)
     SCALE = 1000
     objective_terms = []
-    
+
     for pid in y:
         player = pid2[pid]
         base_proj = player.proj
-        
+
         # Apply ownership penalty if settings are provided
-        if spec.ownership_penalty and spec.ownership_penalty.get('enabled', False):
+        if spec.ownership_penalty and spec.ownership_penalty.get("enabled", False):
             penalty_settings = spec.ownership_penalty
-            lam = penalty_settings.get('weight_lambda', 0.0)
-            
+            lam = penalty_settings.get("weight_lambda", 0.0)
+
             if player.own_proj is not None and lam > 0:
                 # Calculate ownership penalty using the same logic as functional API
-                own_pct = player.own_proj / 100.0 if player.own_proj > 1.0 else player.own_proj
-                penalty = lam * _calculate_ownership_penalty_term(own_pct, penalty_settings)
+                own_pct = (
+                    player.own_proj / 100.0
+                    if player.own_proj > 1.0
+                    else player.own_proj
+                )
+                penalty = lam * _calculate_ownership_penalty_term(
+                    own_pct, penalty_settings
+                )
                 effective_proj = base_proj - penalty
             else:
                 effective_proj = base_proj
         else:
             effective_proj = base_proj
-            
+
         objective_terms.append(int(round(effective_proj * SCALE)) * y[pid])
-    
+
     m.Maximize(sum(objective_terms))
     return m, y
 
 
-BASE = ("PG","SG","SF","PF","C")
+BASE = ("PG", "SG", "SF", "PF", "C")
+
 
 def _flex_degree(pos_list):
     pos = set(pos_list)
     deg = len(pos & set(BASE))
-    if "PG" in pos or "SG" in pos: deg += 1  # G
-    if "SF" in pos or "PF" in pos: deg += 1  # F
+    if "PG" in pos or "SG" in pos:
+        deg += 1  # G
+    if "SF" in pos or "PF" in pos:
+        deg += 1  # F
     return deg + 1  # UTIL
+
 
 def assign_slots_dk(selected_pids, pid2player):
     """Deterministic DK slot assignment (fail-hard).
     Returns list of (pid, slot) on success; returns None if assignment is impossible.
     Policy: fill base slots with least-flexible first, then flex (G/F) with most-flexible, then UTIL.
     """
+
     def _flex_deg(pos_list):
         pos = set(pos_list)
         deg = len(pos & set(BASE))
@@ -529,7 +578,7 @@ def assign_slots_dk(selected_pids, pid2player):
     assigned = []
 
     # Base slots: least-flexible first
-    for slot in ("PG","SG","SF","PF","C"):
+    for slot in ("PG", "SG", "SF", "PF", "C"):
         eligible = [pid for pid in remaining if slot in pid2player[pid].positions]
         if not eligible:
             return None  # cannot fill required base slot
@@ -581,7 +630,7 @@ def solve_cpsat_iterative(players: List[Dict], constraints: Any, seed: int, site
     # Apply safe pruning before building the model
     from .pruning import prune_safely
     import logging
-    
+
     original_players = players.copy()  # Keep reference to original list
     original_count = len(players)
     locks_list = getattr(constraints, "lock_ids", [])
@@ -594,42 +643,59 @@ def solve_cpsat_iterative(players: List[Dict], constraints: Any, seed: int, site
         keep_value_per_pos=4,
     )
     pruned_count = len(players)
-    
+
     # Log pruning summary
-    reduction_pct = (original_count - pruned_count) / original_count * 100 if original_count > 0 else 0
-    logging.info(f"Safe pruning: kept {pruned_count}/{original_count} players ({reduction_pct:.1f}% reduction)")
-    
+    reduction_pct = (
+        (original_count - pruned_count) / original_count * 100
+        if original_count > 0
+        else 0
+    )
+    logging.info(
+        f"Safe pruning: kept {pruned_count}/{original_count} players ({reduction_pct:.1f}% reduction)"
+    )
+
     if locks_list:
-        locks_kept = [pid for pid in locks_list if any(p["player_id"] == pid for p in players)]
-        logging.info(f"Locks auto-kept: {len(locks_kept)}/{len(locks_list)} ({locks_kept})")
-    
+        locks_kept = [
+            pid for pid in locks_list if any(p["player_id"] == pid for p in players)
+        ]
+        logging.info(
+            f"Locks auto-kept: {len(locks_kept)}/{len(locks_list)} ({locks_kept})"
+        )
+
     # Show top pruned players (those with highest projections that were removed)
     if original_count > pruned_count:
         kept_ids = {p["player_id"] for p in players}
         pruned_players = [p for p in original_players if p["player_id"] not in kept_ids]
         if pruned_players:
-            top_pruned = sorted(pruned_players, key=lambda x: x["proj"], reverse=True)[:3]
+            top_pruned = sorted(pruned_players, key=lambda x: x["proj"], reverse=True)[
+                :3
+            ]
             top_pruned_info = [f"{p['name']} ({p['proj']:.1f})" for p in top_pruned]
             logging.info(f"Top pruned players: {', '.join(top_pruned_info)}")
 
     # Build Spec
     from ..model_spec import Spec, SpecPlayer
-    roster = ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"] if site == "dk" else ["PG", "SG", "SF", "PF", "C"]
+
+    roster = (
+        ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
+        if site == "dk"
+        else ["PG", "SG", "SF", "PF", "C"]
+    )
 
     # PRP-16: Convert ownership penalty settings to dict for Spec
     ownership_penalty_dict = None
-    if hasattr(constraints, 'ownership_penalty') and constraints.ownership_penalty:
+    if hasattr(constraints, "ownership_penalty") and constraints.ownership_penalty:
         ownership_penalty_dict = {
-            'enabled': constraints.ownership_penalty.enabled,
-            'mode': constraints.ownership_penalty.mode,
-            'weight_lambda': constraints.ownership_penalty.weight_lambda,
-            'curve_type': constraints.ownership_penalty.curve_type,
-            'power_k': constraints.ownership_penalty.power_k,
-            'pivot_p0': constraints.ownership_penalty.pivot_p0,
-            'curve_alpha': constraints.ownership_penalty.curve_alpha,
-            'clamp_min': constraints.ownership_penalty.clamp_min,
-            'clamp_max': constraints.ownership_penalty.clamp_max,
-            'shrink_gamma': constraints.ownership_penalty.shrink_gamma,
+            "enabled": constraints.ownership_penalty.enabled,
+            "mode": constraints.ownership_penalty.mode,
+            "weight_lambda": constraints.ownership_penalty.weight_lambda,
+            "curve_type": constraints.ownership_penalty.curve_type,
+            "power_k": constraints.ownership_penalty.power_k,
+            "pivot_p0": constraints.ownership_penalty.pivot_p0,
+            "curve_alpha": constraints.ownership_penalty.curve_alpha,
+            "clamp_min": constraints.ownership_penalty.clamp_min,
+            "clamp_max": constraints.ownership_penalty.clamp_max,
+            "shrink_gamma": constraints.ownership_penalty.shrink_gamma,
         }
 
     spec = Spec(
@@ -650,7 +716,11 @@ def solve_cpsat_iterative(players: List[Dict], constraints: Any, seed: int, site
             )
             for p in players
         ],
-        team_max=(constraints.global_team_limit if constraints.global_team_limit is not None else (4 if site == "dk" else None)),
+        team_max=(
+            constraints.global_team_limit
+            if constraints.global_team_limit is not None
+            else (4 if site == "dk" else None)
+        ),
         team_limits=constraints.team_limits or {},
         lock_ids=[pid for pid in getattr(constraints, "lock_ids", [])],
         ban_ids=[pid for pid in getattr(constraints, "ban_ids", [])],
@@ -665,7 +735,9 @@ def solve_cpsat_iterative(players: List[Dict], constraints: Any, seed: int, site
     # Wiring check: Input contract + objective telemetry (prints + returns diagnostics)
     wiring_diag = None
     try:
-        wiring_diag = _run_input_contract_and_objective_telemetry(spec, ownership_penalty_dict)
+        wiring_diag = _run_input_contract_and_objective_telemetry(
+            spec, ownership_penalty_dict
+        )
     except AssertionError as _ae:
         # Fail fast with a clear message
         raise RuntimeError(str(_ae))
@@ -708,16 +780,21 @@ def solve_cpsat_iterative(players: List[Dict], constraints: Any, seed: int, site
     if det_time > 0:
         solver.parameters.max_deterministic_time = det_time
 
-    solver.parameters.num_search_workers = int(params.get("num_search_workers", 0))  # 0=all cores
+    solver.parameters.num_search_workers = int(
+        params.get("num_search_workers", 0)
+    )  # 0=all cores
     solver.parameters.random_seed = int(params.get("random_seed", seed))
     # Prefer portfolio search for speed/robustness when available (Pylance-safe)
     try:
         from ortools.sat import sat_parameters_pb2 as sat_pb2
+
         solver.parameters.search_branching = sat_pb2.SatParameters.PORTFOLIO_SEARCH  # type: ignore[reportAttributeAccessIssue]
     except Exception:
         pass
     # Optional verbose logging controlled via params
-    solver.parameters.log_search_progress = bool(params.get("log_search_progress", False))
+    solver.parameters.log_search_progress = bool(
+        params.get("log_search_progress", False)
+    )
 
     # Helper indices
     pid_to_player: Dict[str, Any] = {p.player_id: p for p in spec.players}
@@ -758,21 +835,25 @@ def solve_cpsat_iterative(players: List[Dict], constraints: Any, seed: int, site
         results.append((chosen, sal, proj))
         # Adapt next iteration's time cap if enabled
         if adaptive_time and curr_gap is not None:
-            if status == cp_model.OPTIMAL or curr_gap <= 0.002:         # ~0.2%
+            if status == cp_model.OPTIMAL or curr_gap <= 0.002:  # ~0.2%
                 time_cap = max(0.25, time_cap * 0.8)
-            elif curr_gap > 0.01:                                       # >1%
+            elif curr_gap > 0.01:  # >1%
                 time_cap = min(1.2, time_cap + 0.2)
         built += 1
 
         # Player-level no-good cut with min-uniques
         selected_pids = {pid for (pid, _pos) in chosen}
-        selected_vars_all_pos = [var for (pid, pos), var in x.items() if pid in selected_pids]
+        selected_vars_all_pos = [
+            var for (pid, pos), var in x.items() if pid in selected_pids
+        ]
         if spec.unique_players <= 0:
             # Forbid the exact lineup
             model.Add(sum(selected_vars_all_pos) <= len(selected_pids) - 1)
         else:
             # Enforce min-uniques vs previous solution
-            model.Add(sum(selected_vars_all_pos) <= len(selected_pids) - spec.unique_players)
+            model.Add(
+                sum(selected_vars_all_pos) <= len(selected_pids) - spec.unique_players
+            )
 
         # Optional: provide hint for next solution
         model.ClearHints()
@@ -785,14 +866,17 @@ def solve_cpsat_iterative(players: List[Dict], constraints: Any, seed: int, site
 
     # Convert to application Lineup/Player
     from ..types import Player, Lineup
+
     lineup_objs: List[Any] = []
     for idx, (chosen, sal, proj) in enumerate(results, start=1):
         # Keep chosen order as DK slot order
         if spec.site == "dk":
             slot_order_map = {s: i for i, s in enumerate(spec.roster_slots)}
         else:
-            slot_order_map = {"PG":0, "SG":1, "SF":2, "PF":3, "C":4}
-        chosen_sorted = sorted(chosen, key=lambda t: (slot_order_map.get(t[1], 99), t[0]))
+            slot_order_map = {"PG": 0, "SG": 1, "SF": 2, "PF": 3, "C": 4}
+        chosen_sorted = sorted(
+            chosen, key=lambda t: (slot_order_map.get(t[1], 99), t[0])
+        )
         players_out: List[Any] = []
         for pid, pos in chosen_sorted:
             sp = pid_to_player[pid]
@@ -821,7 +905,9 @@ def solve_cpsat_iterative(players: List[Dict], constraints: Any, seed: int, site
             )
         )
 
-    status_name = solver.StatusName(last_status) if last_status is not None else "UNKNOWN"
+    status_name = (
+        solver.StatusName(last_status) if last_status is not None else "UNKNOWN"
+    )
     try:
         best_obj = float(solver.ObjectiveValue())
     except Exception:
@@ -831,13 +917,21 @@ def solve_cpsat_iterative(players: List[Dict], constraints: Any, seed: int, site
     except Exception:
         best_bound = None
     # Calculate pruning statistics for diagnostics
-    reduction_pct = (original_count - pruned_count) / original_count * 100 if original_count > 0 else 0
+    reduction_pct = (
+        (original_count - pruned_count) / original_count * 100
+        if original_count > 0
+        else 0
+    )
     pruned_players_info = None
     if original_count > pruned_count:
         kept_ids = {p["player_id"] for p in players}
-        pruned_players_list = [p for p in original_players if p["player_id"] not in kept_ids]
+        pruned_players_list = [
+            p for p in original_players if p["player_id"] not in kept_ids
+        ]
         if pruned_players_list:
-            top_pruned = sorted(pruned_players_list, key=lambda x: x["proj"], reverse=True)[:3]
+            top_pruned = sorted(
+                pruned_players_list, key=lambda x: x["proj"], reverse=True
+            )[:3]
             pruned_players_info = [f"{p['name']} ({p['proj']:.1f})" for p in top_pruned]
 
     diagnostics = {
@@ -846,9 +940,11 @@ def solve_cpsat_iterative(players: List[Dict], constraints: Any, seed: int, site
         "status": status_name,
         "best_obj": best_obj,
         "best_bound": best_bound,
-        "achieved_gap": None
-        if best_obj is None or best_bound is None
-        else abs(best_bound - best_obj) / max(1.0, abs(best_obj)),
+        "achieved_gap": (
+            None
+            if best_obj is None or best_bound is None
+            else abs(best_bound - best_obj) / max(1.0, abs(best_obj))
+        ),
         "wall_time_sec": getattr(solver, "WallTime", lambda: None)(),
         "model": {
             "num_bool_vars": num_bool_vars,
@@ -856,7 +952,9 @@ def solve_cpsat_iterative(players: List[Dict], constraints: Any, seed: int, site
         },
         "params": {
             "max_time_in_seconds": solver.parameters.max_time_in_seconds,
-            "relative_gap_limit": getattr(solver.parameters, "relative_gap_limit", None),
+            "relative_gap_limit": getattr(
+                solver.parameters, "relative_gap_limit", None
+            ),
             "max_deterministic_time": solver.parameters.max_deterministic_time,
             "num_search_workers": solver.parameters.num_search_workers,
             "random_seed": solver.parameters.random_seed,
@@ -870,14 +968,26 @@ def solve_cpsat_iterative(players: List[Dict], constraints: Any, seed: int, site
             "kept_players": pruned_count,
             "reduction_pct": round(reduction_pct, 1),
             "top_pruned": pruned_players_info,
-            "locks_kept": len([pid for pid in locks_list if any(p["player_id"] == pid for p in players)]) if locks_list else 0
+            "locks_kept": (
+                len(
+                    [
+                        pid
+                        for pid in locks_list
+                        if any(p["player_id"] == pid for p in players)
+                    ]
+                )
+                if locks_list
+                else 0
+            ),
         },
         "wiring_check": wiring_diag,
     }
     return lineup_objs, diagnostics
 
 
-def solve_cpsat_iterative_counts(players: List[Dict], constraints: Any, seed: int, site: str):
+def solve_cpsat_iterative_counts(
+    players: List[Dict], constraints: Any, seed: int, site: str
+):
     """
     Map players + constraints to Spec, build counts-based CP-SAT and generate N lineups.
     Uses one binary variable per player and deterministic slot assignment post-solve.
@@ -889,7 +999,7 @@ def solve_cpsat_iterative_counts(players: List[Dict], constraints: Any, seed: in
     # Apply safe pruning before building the model
     from .pruning import prune_safely
     import logging
-    
+
     original_players = players.copy()  # Keep reference to original list
     original_count = len(players)
     locks_list = getattr(constraints, "lock_ids", [])
@@ -902,42 +1012,59 @@ def solve_cpsat_iterative_counts(players: List[Dict], constraints: Any, seed: in
         keep_value_per_pos=4,
     )
     pruned_count = len(players)
-    
+
     # Log pruning summary
-    reduction_pct = (original_count - pruned_count) / original_count * 100 if original_count > 0 else 0
-    logging.info(f"Safe pruning: kept {pruned_count}/{original_count} players ({reduction_pct:.1f}% reduction)")
-    
+    reduction_pct = (
+        (original_count - pruned_count) / original_count * 100
+        if original_count > 0
+        else 0
+    )
+    logging.info(
+        f"Safe pruning: kept {pruned_count}/{original_count} players ({reduction_pct:.1f}% reduction)"
+    )
+
     if locks_list:
-        locks_kept = [pid for pid in locks_list if any(p["player_id"] == pid for p in players)]
-        logging.info(f"Locks auto-kept: {len(locks_kept)}/{len(locks_list)} ({locks_kept})")
-    
+        locks_kept = [
+            pid for pid in locks_list if any(p["player_id"] == pid for p in players)
+        ]
+        logging.info(
+            f"Locks auto-kept: {len(locks_kept)}/{len(locks_list)} ({locks_kept})"
+        )
+
     # Show top pruned players (those with highest projections that were removed)
     if original_count > pruned_count:
         kept_ids = {p["player_id"] for p in players}
         pruned_players = [p for p in original_players if p["player_id"] not in kept_ids]
         if pruned_players:
-            top_pruned = sorted(pruned_players, key=lambda x: x["proj"], reverse=True)[:3]
+            top_pruned = sorted(pruned_players, key=lambda x: x["proj"], reverse=True)[
+                :3
+            ]
             top_pruned_info = [f"{p['name']} ({p['proj']:.1f})" for p in top_pruned]
             logging.info(f"Top pruned players: {', '.join(top_pruned_info)}")
 
     # Build Spec
     from ..model_spec import Spec, SpecPlayer
-    roster = ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"] if site == "dk" else ["PG", "SG", "SF", "PF", "C"]
+
+    roster = (
+        ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
+        if site == "dk"
+        else ["PG", "SG", "SF", "PF", "C"]
+    )
 
     # PRP-16: Convert ownership penalty settings to dict for Spec
     ownership_penalty_dict = None
-    if hasattr(constraints, 'ownership_penalty') and constraints.ownership_penalty:
+    if hasattr(constraints, "ownership_penalty") and constraints.ownership_penalty:
         ownership_penalty_dict = {
-            'enabled': constraints.ownership_penalty.enabled,
-            'mode': constraints.ownership_penalty.mode,
-            'weight_lambda': constraints.ownership_penalty.weight_lambda,
-            'curve_type': constraints.ownership_penalty.curve_type,
-            'power_k': constraints.ownership_penalty.power_k,
-            'pivot_p0': constraints.ownership_penalty.pivot_p0,
-            'curve_alpha': constraints.ownership_penalty.curve_alpha,
-            'clamp_min': constraints.ownership_penalty.clamp_min,
-            'clamp_max': constraints.ownership_penalty.clamp_max,
-            'shrink_gamma': constraints.ownership_penalty.shrink_gamma,
+            "enabled": constraints.ownership_penalty.enabled,
+            "mode": constraints.ownership_penalty.mode,
+            "weight_lambda": constraints.ownership_penalty.weight_lambda,
+            "curve_type": constraints.ownership_penalty.curve_type,
+            "power_k": constraints.ownership_penalty.power_k,
+            "pivot_p0": constraints.ownership_penalty.pivot_p0,
+            "curve_alpha": constraints.ownership_penalty.curve_alpha,
+            "clamp_min": constraints.ownership_penalty.clamp_min,
+            "clamp_max": constraints.ownership_penalty.clamp_max,
+            "shrink_gamma": constraints.ownership_penalty.shrink_gamma,
         }
 
     spec = Spec(
@@ -958,7 +1085,11 @@ def solve_cpsat_iterative_counts(players: List[Dict], constraints: Any, seed: in
             )
             for p in players
         ],
-        team_max=(constraints.global_team_limit if constraints.global_team_limit is not None else (4 if site == "dk" else None)),
+        team_max=(
+            constraints.global_team_limit
+            if constraints.global_team_limit is not None
+            else (4 if site == "dk" else None)
+        ),
         team_limits=constraints.team_limits or {},
         lock_ids=[pid for pid in getattr(constraints, "lock_ids", [])],
         ban_ids=[pid for pid in getattr(constraints, "ban_ids", [])],
@@ -977,7 +1108,9 @@ def solve_cpsat_iterative_counts(players: List[Dict], constraints: Any, seed: in
     # Wiring check: Input contract + objective telemetry (prints + returns diagnostics)
     wiring_diag = None
     try:
-        wiring_diag = _run_input_contract_and_objective_telemetry(spec, ownership_penalty_dict)
+        wiring_diag = _run_input_contract_and_objective_telemetry(
+            spec, ownership_penalty_dict
+        )
     except AssertionError as _ae:
         # Fail fast with a clear message
         raise RuntimeError(str(_ae))
@@ -1019,24 +1152,35 @@ def solve_cpsat_iterative_counts(players: List[Dict], constraints: Any, seed: in
     if det_time > 0:
         solver.parameters.max_deterministic_time = det_time
 
-    solver.parameters.num_search_workers = int(params.get("num_search_workers", 0))  # 0=all cores
+    solver.parameters.num_search_workers = int(
+        params.get("num_search_workers", 0)
+    )  # 0=all cores
     solver.parameters.random_seed = int(params.get("random_seed", seed))
     # Prefer portfolio search for speed/robustness when available (Pylance-safe)
     try:
         from ortools.sat import sat_parameters_pb2 as sat_pb2
+
         solver.parameters.search_branching = sat_pb2.SatParameters.PORTFOLIO_SEARCH  # type: ignore[reportAttributeAccessIssue]
     except Exception:
         pass
     # Optional verbose logging controlled via params
-    solver.parameters.log_search_progress = bool(params.get("log_search_progress", False))
+    solver.parameters.log_search_progress = bool(
+        params.get("log_search_progress", False)
+    )
 
     # Helper indices
     pid_to_player: Dict[str, Any] = {p.player_id: p for p in spec.players}
 
     def extract_selected():
-        chosen = [pid for pid,var in y.items() if solver.Value(var) == 1]
-        sal = sum(next(pp for pp in spec.players if pp.player_id==pid).salary for pid in chosen)
-        proj = sum(next(pp for pp in spec.players if pp.player_id==pid).proj   for pid in chosen)
+        chosen = [pid for pid, var in y.items() if solver.Value(var) == 1]
+        sal = sum(
+            next(pp for pp in spec.players if pp.player_id == pid).salary
+            for pid in chosen
+        )
+        proj = sum(
+            next(pp for pp in spec.players if pp.player_id == pid).proj
+            for pid in chosen
+        )
         return chosen, sal, proj
 
     assigned_lineups: List[Tuple[List[Tuple[str, str]], int, float]] = []
@@ -1070,9 +1214,9 @@ def solve_cpsat_iterative_counts(players: List[Dict], constraints: Any, seed: in
 
         # Adapt next iteration's time cap if enabled
         if adaptive_time and curr_gap is not None:
-            if status == cp_model.OPTIMAL or curr_gap <= 0.002:         # ~0.2%
+            if status == cp_model.OPTIMAL or curr_gap <= 0.002:  # ~0.2%
                 time_cap = max(0.25, time_cap * 0.8)
-            elif curr_gap > 0.01:                                       # >1%
+            elif curr_gap > 0.01:  # >1%
                 time_cap = min(1.2, time_cap + 0.2)
         built += 1
 
@@ -1080,7 +1224,9 @@ def solve_cpsat_iterative_counts(players: List[Dict], constraints: Any, seed: in
         if spec.unique_players <= 0:
             model.Add(sum(y[pid] for pid in chosen) <= spec.lineup_size - 1)
         else:
-            model.Add(sum(y[pid] for pid in chosen) <= spec.lineup_size - spec.unique_players)
+            model.Add(
+                sum(y[pid] for pid in chosen) <= spec.lineup_size - spec.unique_players
+            )
 
         # Hints
         model.ClearHints()
@@ -1089,14 +1235,19 @@ def solve_cpsat_iterative_counts(players: List[Dict], constraints: Any, seed: in
 
     # Convert to application Lineup/Player using slot assignment
     from ..types import Player, Lineup
+
     lineup_objs: List[Any] = []
     if not assigned_lineups:
-        raise RuntimeError("CP-SAT counts-only: no assignable lineups found. Check locks/bans and strengthened DK counts.")
+        raise RuntimeError(
+            "CP-SAT counts-only: no assignable lineups found. Check locks/bans and strengthened DK counts."
+        )
 
     for idx, (assigned_slots, sal, proj) in enumerate(assigned_lineups, start=1):
         # Sort by slot order for consistent output (DK-only path here)
         slot_order_map = {s: i for i, s in enumerate(spec.roster_slots)}
-        assigned_slots_sorted = sorted(assigned_slots, key=lambda t: (slot_order_map.get(t[1], 99), t[0]))
+        assigned_slots_sorted = sorted(
+            assigned_slots, key=lambda t: (slot_order_map.get(t[1], 99), t[0])
+        )
 
         players_out: List[Any] = []
         for pid, pos in assigned_slots_sorted:
@@ -1126,7 +1277,9 @@ def solve_cpsat_iterative_counts(players: List[Dict], constraints: Any, seed: in
             )
         )
 
-    status_name = solver.StatusName(last_status) if last_status is not None else "UNKNOWN"
+    status_name = (
+        solver.StatusName(last_status) if last_status is not None else "UNKNOWN"
+    )
     try:
         best_obj = float(solver.ObjectiveValue())
     except Exception:
@@ -1136,13 +1289,21 @@ def solve_cpsat_iterative_counts(players: List[Dict], constraints: Any, seed: in
     except Exception:
         best_bound = None
     # Calculate pruning statistics for diagnostics
-    reduction_pct = (original_count - pruned_count) / original_count * 100 if original_count > 0 else 0
+    reduction_pct = (
+        (original_count - pruned_count) / original_count * 100
+        if original_count > 0
+        else 0
+    )
     pruned_players_info = None
     if original_count > pruned_count:
         kept_ids = {p["player_id"] for p in players}
-        pruned_players_list = [p for p in original_players if p["player_id"] not in kept_ids]
+        pruned_players_list = [
+            p for p in original_players if p["player_id"] not in kept_ids
+        ]
         if pruned_players_list:
-            top_pruned = sorted(pruned_players_list, key=lambda x: x["proj"], reverse=True)[:3]
+            top_pruned = sorted(
+                pruned_players_list, key=lambda x: x["proj"], reverse=True
+            )[:3]
             pruned_players_info = [f"{p['name']} ({p['proj']:.1f})" for p in top_pruned]
 
     diagnostics = {
@@ -1151,9 +1312,11 @@ def solve_cpsat_iterative_counts(players: List[Dict], constraints: Any, seed: in
         "status": status_name,
         "best_obj": best_obj,
         "best_bound": best_bound,
-        "achieved_gap": None
-        if best_obj is None or best_bound is None
-        else abs(best_bound - best_obj) / max(1.0, abs(best_obj)),
+        "achieved_gap": (
+            None
+            if best_obj is None or best_bound is None
+            else abs(best_bound - best_obj) / max(1.0, abs(best_obj))
+        ),
         "wall_time_sec": getattr(solver, "WallTime", lambda: None)(),
         "model": {
             "num_bool_vars": num_bool_vars,
@@ -1161,7 +1324,9 @@ def solve_cpsat_iterative_counts(players: List[Dict], constraints: Any, seed: in
         },
         "params": {
             "max_time_in_seconds": solver.parameters.max_time_in_seconds,
-            "relative_gap_limit": getattr(solver.parameters, "relative_gap_limit", None),
+            "relative_gap_limit": getattr(
+                solver.parameters, "relative_gap_limit", None
+            ),
             "max_deterministic_time": solver.parameters.max_deterministic_time,
             "num_search_workers": solver.parameters.num_search_workers,
             "random_seed": solver.parameters.random_seed,
@@ -1175,7 +1340,17 @@ def solve_cpsat_iterative_counts(players: List[Dict], constraints: Any, seed: in
             "kept_players": pruned_count,
             "reduction_pct": round(reduction_pct, 1),
             "top_pruned": pruned_players_info,
-            "locks_kept": len([pid for pid in locks_list if any(p["player_id"] == pid for p in players)]) if locks_list else 0
+            "locks_kept": (
+                len(
+                    [
+                        pid
+                        for pid in locks_list
+                        if any(p["player_id"] == pid for p in players)
+                    ]
+                )
+                if locks_list
+                else 0
+            ),
         },
         "wiring_check": wiring_diag,
     }
