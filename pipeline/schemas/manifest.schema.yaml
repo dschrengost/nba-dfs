@@ -26,7 +26,7 @@ properties:
         content_sha256: { $ref: "./common.types.yaml#/definitions/SHA256" }
         role:
           type: string
-          enum: [projections_normalized, players, optimizer_lineups, variants, field, contest_structure, config]
+          enum: [projections_normalized, players, optimizer_lineups, variants, field, contest_structure, sim_results, config]
       required: [path, content_sha256, role]
   config:
     type: object
@@ -49,6 +49,8 @@ properties:
               projections_normalized,
               optimizer_lineups,
               optimizer_metrics,
+              metrics,
+              portfolio_metrics,
               variant_catalog,
               variant_metrics,
               field,
