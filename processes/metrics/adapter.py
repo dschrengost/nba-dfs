@@ -33,6 +33,13 @@ def _sha256_of_path(path: Path) -> str:
     return h.hexdigest()
 
 
+def _safe_hash(path: Path) -> str:
+    try:
+        return _sha256_of_path(path) if path and path.exists() else ""
+    except Exception:
+        return ""
+
+
 def _schema_version(schemas_root: Path | None, name: str) -> str:
     schema = load_schema((schemas_root or SCHEMAS_ROOT) / f"{name}.schema.yaml")
     return str(schema.get("version", "0.0.0"))
@@ -73,11 +80,9 @@ def _contest_entry_fee_from_path(path: Path) -> float:
             return float(fee) if fee is not None else default_fee
         if suffix == ".parquet":
             df = pd.read_parquet(path)
-            # Try to find a single-valued entry_fee field
-            for col in df.columns:
-                if str(col).lower() == "entry_fee":
-                    val = df.iloc[0][col]
-                    return float(val)
+            if any(str(c).lower() == "entry_fee" for c in df.columns):
+                vals = pd.to_numeric(df[[c for c in df.columns if str(c).lower() == "entry_fee"][0]], errors="coerce").dropna().unique()
+                return float(vals[0]) if len(vals) == 1 else default_fee
             return default_fee
         # CSV or others → default (CSV in sim uses default 20)
         return default_fee
@@ -100,7 +105,8 @@ def _field_lineup_keys(path: Path) -> list[str]:
         for x in lists:
             try:
                 seq = list(x) if x is not None else []
-                keys.append(",".join(str(s) for s in seq))
+                seq_sorted = sorted(seq)
+                keys.append(",".join(str(s) for s in seq_sorted))
             except Exception:
                 continue
         return [v for v in keys if v]
@@ -116,12 +122,12 @@ def _duplication_risk_and_entropy(keys: Sequence[str]) -> tuple[float, float]:
         counts[k] = counts.get(k, 0) + 1
     unique = len(counts)
     dup_risk = 1.0 - (unique / float(n))
-    # Shannon entropy (nats)
+    # Shannon entropy (bits)
     entropy = 0.0
     for c in counts.values():
         p = c / float(n)
         if p > 0:
-            entropy -= p * math.log(p)
+            entropy -= p * math.log2(p)
     return float(dup_risk), float(entropy)
 
 
@@ -149,13 +155,17 @@ def run_adapter(
     tag: str | None = None,
     schemas_root: Path | None = None,
     verbose: bool = False,
+    deterministic: bool = False,
+    fixed_ts: str | None = None,
+    validate: bool = True,
 ) -> dict[str, Any]:
-    """Compute metrics from an existing sim run.
-
-    Returns a dict with paths for metrics, manifest, and registry.
+    """Compute metrics from an existing sim run. Supports deterministic run IDs and optional validation toggle.
     """
     schemas_root = schemas_root or SCHEMAS_ROOT
     created_ts = _utc_now_iso()
+
+    if fixed_ts:
+        created_ts = fixed_ts
 
     # Discover sim artifacts
     sim_run_dir = out_root / "runs" / "sim" / from_sim_run
@@ -184,14 +194,16 @@ def run_adapter(
     portfolio_aggs["duplication_risk"] = dup_risk
     portfolio_aggs["entropy"] = entropy
 
-    # Deterministic run_id based on sim run and results sha
-    now = datetime.now(timezone.utc)
-    run_id_core = now.strftime("%Y%m%d_%H%M%S")
+    # Run ID: deterministic option based on content hash, or timestamped default
     results_sha = _sha256_of_path(sim_results_path)
-    short_hash = hashlib.sha256(
-        f"{from_sim_run}|{results_sha}|{seed}".encode()
-    ).hexdigest()[:8]
-    run_id = f"{run_id_core}_{short_hash}"
+    if deterministic:
+        short_hash = hashlib.sha256(f"{results_sha}|{seed}".encode()).hexdigest()[:8]
+        run_id = f"metrics_{short_hash}"
+    else:
+        now_dt = datetime.fromisoformat(created_ts.replace("Z", "+00:00"))
+        run_id_core = now_dt.strftime("%Y%m%d_%H%M%S")
+        short_hash = hashlib.sha256(f"{from_sim_run}|{results_sha}|{seed}".encode()).hexdigest()[:8]
+        run_id = f"{run_id_core}_{short_hash}"
 
     # Build output directories
     run_dir = out_root / "runs" / "metrics" / run_id
@@ -203,7 +215,8 @@ def run_adapter(
 
     # Validate against metrics schema before write
     metrics_schema = load_schema(schemas_root / "metrics.schema.yaml")
-    validate_obj(metrics_schema, metrics_row, schemas_root=schemas_root)
+    if validate:
+        validate_obj(metrics_schema, metrics_row, schemas_root=schemas_root)
     metrics_df = pd.DataFrame([metrics_row])
 
     metrics_path = artifacts_dir / "metrics.parquet"
@@ -222,7 +235,7 @@ def run_adapter(
         inputs_for_manifest.append(
             {
                 "path": str(inputs["field"]),
-                "content_sha256": _sha256_of_path(inputs["field"]),
+                "content_sha256": _safe_hash(inputs["field"]),
                 "role": "field",
             }
         )
@@ -230,7 +243,7 @@ def run_adapter(
         inputs_for_manifest.append(
             {
                 "path": str(inputs["variants"]),
-                "content_sha256": _sha256_of_path(inputs["variants"]),
+                "content_sha256": _safe_hash(inputs["variants"]),
                 "role": "variants",
             }
         )
@@ -238,7 +251,7 @@ def run_adapter(
         inputs_for_manifest.append(
             {
                 "path": str(inputs["contest_structure"]),
-                "content_sha256": _sha256_of_path(inputs["contest_structure"]),
+                "content_sha256": _safe_hash(inputs["contest_structure"]),
                 "role": "contest_structure",
             }
         )
@@ -256,7 +269,8 @@ def run_adapter(
         ],
         "tags": [tag] if tag else [],
     }
-    validate_obj(manifest_schema, manifest, schemas_root=schemas_root)
+    if validate:
+        validate_obj(manifest_schema, manifest, schemas_root=schemas_root)
     (run_dir / "manifest.json").write_text(
         json.dumps(manifest, indent=2), encoding="utf-8"
     )
@@ -275,7 +289,8 @@ def run_adapter(
         "tags": [tag] if tag else [],
     }
     runs_registry_schema = load_schema(schemas_root / "runs_registry.schema.yaml")
-    validate_obj(runs_registry_schema, reg_row, schemas_root=schemas_root)
+    if validate:
+        validate_obj(runs_registry_schema, reg_row, schemas_root=schemas_root)
     if registry_path.exists():
         existing = pd.read_parquet(registry_path)
         reg_df = pd.concat([existing, pd.DataFrame([reg_row])], ignore_index=True)
@@ -284,9 +299,10 @@ def run_adapter(
     write_parquet(reg_df, registry_path)
 
     if verbose:
+        print(f"[metrics] run_id: {run_id}")
         print(f"[metrics] sim_results: {sim_results_path}")
         print(f"[metrics] entry_fee: {entry_fee}")
-        print(f"[metrics] dup_risk: {dup_risk:.4f}, entropy: {entropy:.4f}")
+        print(f"[metrics] dup_risk: {dup_risk:.4f}, entropy(bits): {entropy:.4f}")
         print(f"[metrics] roi_mean: {portfolio_aggs['roi_mean']:.6f}")
         print(f"[metrics] sharpe: {portfolio_aggs['sharpe']:.6f}")
         print(f"[metrics] sortino: {portfolio_aggs['sortino']:.6f}")
@@ -296,6 +312,9 @@ def run_adapter(
         "metrics_path": str(metrics_path),
         "manifest_path": str(run_dir / "manifest.json"),
         "registry_path": str(registry_path),
+        "entry_fee": float(entry_fee),
+        "duplication_risk": float(dup_risk),
+        "entropy_bits": float(entropy),
     }
 
 
@@ -307,6 +326,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--tag", type=str)
     p.add_argument("--schemas-root", type=Path)
     p.add_argument("--verbose", action="store_true")
+    p.add_argument("--deterministic", action="store_true")
+    p.add_argument("--fixed-ts", type=str, help="Override created_ts (ISO8601, e.g., 2025-09-06T12:34:56.789Z)")
+    p.add_argument("--no-validate", dest="validate", action="store_false")
     return p
 
 
@@ -319,6 +341,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         tag=ns.tag,
         schemas_root=ns.schemas_root,
         verbose=bool(ns.verbose),
+        deterministic=bool(ns.deterministic),
+        fixed_ts=str(ns.fixed_ts) if ns.fixed_ts else None,
+        validate=bool(ns.validate),
     )
     return 0
 
