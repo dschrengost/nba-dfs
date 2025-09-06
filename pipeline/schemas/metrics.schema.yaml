@@ -1,0 +1,30 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/metrics.schema.yaml"
+title: "Run Metrics"
+description: "Aggregated portfolio metrics computed from a simulation run."
+version: "0.1.0"
+type: object
+additionalProperties: false
+properties:
+  run_id:
+    $ref: "./common.types.yaml#/definitions/RunId"
+  aggregates:
+    type: object
+    additionalProperties: false
+    properties:
+      roi_mean: { type: number }
+      sharpe: { type: number }
+      sortino: { type: number }
+      duplication_risk: { $ref: "./common.types.yaml#/definitions/Probability" }
+      entropy: { type: number, minimum: 0 }
+    required: [roi_mean, duplication_risk, entropy]
+required: [run_id, aggregates]
+examples:
+  - run_id: "20251101_180000_deadbee"
+    aggregates:
+      roi_mean: -0.08
+      sharpe: 0.7
+      sortino: 1.1
+      duplication_risk: 0.15
+      entropy: 4.2
+

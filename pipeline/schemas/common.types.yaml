@@ -17,7 +17,7 @@ definitions:
 
   RunTypeEnum:
     type: string
-    enum: [ingest, optimizer, variants, field, sim]
+    enum: [ingest, optimizer, variants, field, sim, metrics]
 
   RunId:
     type: string
