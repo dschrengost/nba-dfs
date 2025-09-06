@@ -5,6 +5,11 @@ from typing import Any, Literal
 from pydantic import BaseModel
 
 
+class ErrorResponse(BaseModel):
+    error: str
+    detail: str | None = None
+
+
 class IngestConfig(BaseModel):
     source: str = "manual"
     projections: str | None = None
@@ -97,3 +102,18 @@ class BundleManifest(BaseModel):
     slate_id: str
     created_ts: str
     stages: list[BundleStage]
+
+
+class RunRegistryRow(BaseModel):
+    run_id: str
+    run_type: str
+    slate_id: str
+    status: str
+    primary_outputs: list[str] | None = None
+    metrics_path: str | None = None
+    created_ts: str
+    tags: list[str] | None = None
+
+
+class RunsListResponse(BaseModel):
+    runs: list[RunRegistryRow]
