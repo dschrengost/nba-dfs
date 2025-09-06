@@ -1,22 +1,22 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import yaml
-from jsonschema.validators import Draft202012Validator as Validator
 from jsonschema import RefResolver
+from jsonschema.validators import Draft202012Validator as Validator
 
 
-def load_schema(path: Path) -> Dict[str, Any]:
+def load_schema(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
         schema = yaml.safe_load(f)
     Validator.check_schema(schema)
     return schema
 
 
-def validate_obj(schema: Dict[str, Any], obj: Dict[str, Any], *, schemas_root: Path | None = None, schema_path: Path | None = None) -> None:
-    store: Dict[str, Any] = {}
+def validate_obj(schema: dict[str, Any], obj: dict[str, Any], *, schemas_root: Path | None = None, schema_path: Path | None = None) -> None:
+    store: dict[str, Any] = {}
     base_uri = ""
     if schemas_root is not None:
         root = schemas_root.resolve()

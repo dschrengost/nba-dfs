@@ -3,19 +3,29 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+import yaml
+
 
 def test_runtime_validation_blocks_on_schema_mismatch(tmp_path: Path) -> None:
-    # Prepare a schemas_root copy that rejects 'ingest' run_type by removing it from enum
+    # Prepare a schemas_root copy that rejects 'ingest' run_type
+    # by removing it from the RunTypeEnum list
     schemas_src = Path("pipeline/schemas")
     schemas_dst = tmp_path / "schemas_bad"
     shutil.copytree(schemas_src, schemas_dst)
 
     # Overwrite common.types.yaml to drop 'ingest' from RunTypeEnum
-    common = (schemas_dst / "common.types.yaml").read_text()
-    common = common.replace(
-        "[ingest, optimizer, variants, field, sim]", "[optimizer, variants, field, sim]"
-    )
-    (schemas_dst / "common.types.yaml").write_text(common)
+    # using a robust YAML edit instead of string replacement
+    common_path = schemas_dst / "common.types.yaml"
+    common_schema = yaml.safe_load(common_path.read_text())
+    enum_path = ["definitions", "RunTypeEnum", "enum"]
+    cursor = common_schema
+    for key in enum_path[:-1]:
+        cursor = cursor[key]
+    enum_list = list(cursor.get(enum_path[-1], []))
+    if "ingest" in enum_list:
+        enum_list.remove("ingest")
+        cursor[enum_path[-1]] = enum_list
+        common_path.write_text(yaml.safe_dump(common_schema, sort_keys=False))
 
     out_root = tmp_path / "out"
     projections = Path("tests/fixtures/projections_sourceA.csv")

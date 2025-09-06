@@ -1,23 +1,20 @@
+import collections
 import csv
-import json
-import math
-import os
-import random
-import time
-import numpy as np
-import pulp as plp
-import multiprocessing as mp
-import pandas as pd
-import statistics
 import datetime
 import itertools
-import collections
+import json
+import math
+import multiprocessing as mp
+import os
 import re
-from scipy.stats import norm, kendalltau, multivariate_normal, gamma
-import matplotlib.pyplot as plt
-import seaborn as sns
+import time
 from collections import Counter
-from numba import jit, prange
+
+import numpy as np
+import pandas as pd
+import pulp as plp
+from numba import jit
+from scipy.stats import multivariate_normal
 
 
 @jit(nopython=True)
@@ -433,9 +430,7 @@ class NBA_GPP_Simulator:
             problem.solve(plp.PULP_CBC_CMD(msg=0))
         except plp.PulpSolverError:
             print(
-                "Infeasibility reached - only generated {} lineups out of {}. Continuing with export.".format(
-                    len(self.num_lineups), self.num_lineups
-                )
+                f"Infeasibility reached - only generated {len(self.num_lineups)} lineups out of {self.num_lineups}. Continuing with export."
             )
 
         # Get the lineup and add it to our list
@@ -798,16 +793,14 @@ class NBA_GPP_Simulator:
                     ids = [self.player_dict[k]["ID"] for k in self.player_dict]
                     if l not in ids:
                         print(
-                            "player id {} in lineup {} not found in player dict".format(
-                                l, i
-                            )
+                            f"player id {l} in lineup {i} not found in player dict"
                         )
                         if l in self.id_name_dict:
                             print(self.id_name_dict[l])
                         bad_players.append(l)
                         error = True
                 if len(lineup) < len(self.roster_construction):
-                    print("lineup {} doesn't match roster construction size".format(i))
+                    print(f"lineup {i} doesn't match roster construction size")
                     continue
                 # storing if this lineup was made by an optimizer or with the generation process in this script
                 error = False
@@ -834,7 +827,7 @@ class NBA_GPP_Simulator:
                         self.seen_lineups_ix[lineup_set] = j
 
                         j += 1
-        print("loaded {} lineups".format(j))
+        print(f"loaded {j} lineups")
         # print(self.field_lineups)
 
     @staticmethod
@@ -1747,9 +1740,7 @@ class NBA_GPP_Simulator:
 
         out_path = os.path.join(
             os.path.dirname(__file__),
-            "../output/{}_gpp_sim_lineups_{}_{}.csv".format(
-                self.site, self.field_size, self.num_iterations
-            ),
+            f"../output/{self.site}_gpp_sim_lineups_{self.field_size}_{self.num_iterations}.csv",
         )
         with open(out_path, "w") as f:
             if self.site == "dk":
@@ -1776,9 +1767,7 @@ class NBA_GPP_Simulator:
 
         out_path = os.path.join(
             os.path.dirname(__file__),
-            "../output/{}_gpp_sim_player_exposure_{}_{}.csv".format(
-                self.site, self.field_size, self.num_iterations
-            ),
+            f"../output/{self.site}_gpp_sim_player_exposure_{self.field_size}_{self.num_iterations}.csv",
         )
         with open(out_path, "w") as f:
             f.write(
