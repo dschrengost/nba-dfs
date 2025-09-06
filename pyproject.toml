@@ -95,6 +95,7 @@ ignore_missing_imports = true
 follow_imports = "skip"
 files = ["processes/optimizer/adapter.py"]
 exclude = "(?x)(^processes/optimizer/_legacy/|^frontend/|^app/streamlit/)"
+plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = "tests.*"
