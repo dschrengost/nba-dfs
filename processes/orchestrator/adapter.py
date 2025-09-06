@@ -4,20 +4,20 @@ import argparse
 import hashlib
 import json
 import sys
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, cast
 
 import pandas as pd
 
 # Stage adapters
-from pipeline import ingest as ingest_pkg
-from processes.optimizer import adapter as opt
-from processes.variants import adapter as var
+from pipeline.ingest import cli as ingest_cli
 from processes.field_sampler import adapter as fld
 from processes.gpp_sim import adapter as sim
-
+from processes.optimizer import adapter as opt
+from processes.variants import adapter as var
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCHEMAS_ROOT_DEFAULT = REPO_ROOT / "pipeline" / "schemas"
@@ -34,11 +34,26 @@ def _coerce_scalar(val: str) -> int | float | bool | str:
     if lower in ("true", "false"):
         return lower == "true"
     try:
-        if "." in val:
-            return float(val)
         return int(val)
     except ValueError:
-        return val
+        try:
+            return float(val)
+        except ValueError:
+            return val
+
+
+def _set_dotted(d: dict[str, Any], dotted: str, value: Any) -> None:
+    keys = [k.strip() for k in dotted.split(".") if k.strip()]
+    cur: dict[str, Any] = d
+    for k in keys[:-1]:
+        val = cur.get(k)
+        if not isinstance(val, dict):
+            val = {}
+            cur[k] = val
+        # mypy: val is a dict after the isinstance guard above
+        cur = cast(dict[str, Any], val)
+
+    cur[keys[-1]] = value
 
 
 def _load_config(path: Path | None, kv: Sequence[str] | None) -> dict[str, Any]:
@@ -56,7 +71,7 @@ def _load_config(path: Path | None, kv: Sequence[str] | None) -> dict[str, Any]:
             if "=" not in item:
                 continue
             k, v = item.split("=", 1)
-            cfg[k.strip()] = _coerce_scalar(v.strip())
+            _set_dotted(cfg, k.strip(), _coerce_scalar(v.strip()))
     return cfg
 
 
@@ -149,17 +164,22 @@ def run_bundle(
 
     # 1) Ingest
     ing = stages_cfg["ingest"]
+    required_keys = ("projections", "player_ids", "mapping")
+    missing = [k for k in required_keys if not ing.get(k)]
+    if missing:
+        raise ValueError(f"ingest stage missing required keys: {', '.join(missing)}")
+
     ingest_args = [
         "--slate-id",
         str(slate_id),
         "--source",
         str(ing.get("source", "manual")),
         "--projections",
-        str(ing.get("projections")),
+        str(ing["projections"]),
         "--player-ids",
-        str(ing.get("player_ids")),
+        str(ing["player_ids"]),
         "--mapping",
-        str(ing.get("mapping")),
+        str(ing["mapping"]),
         "--out-root",
         str(out_root),
         "--schemas-root",
@@ -167,7 +187,7 @@ def run_bundle(
     ]
     if not validate:
         ingest_args.append("--no-validate")
-    rc = ingest_pkg.cli.main(ingest_args)
+    rc = ingest_cli.main(ingest_args)
     if rc != 0:
         raise RuntimeError(f"ingest stage failed (exit={rc})")
     # Discover ingest run in registry
@@ -176,20 +196,26 @@ def run_bundle(
         raise FileNotFoundError("Registry not found after ingest stage")
     reg = pd.read_parquet(registry_path)
     mask = (reg.get("run_type") == "ingest") & (reg.get("slate_id") == slate_id)
-    if not mask.any():
+    recs = reg.loc[mask]
+    if recs.empty:
         raise RuntimeError("No ingest run discovered in registry")
-    row = reg.loc[mask]["created_ts"].astype(str)
-    idx = row.idxmax()
-    ingest_run = str(reg.loc[idx, "run_id"])  # type: ignore[index]
+    idx = pd.to_datetime(recs["created_ts"]).idxmax()
+    ingest_run = str(reg.loc[idx, "run_id"])
     ingest_manifest = out_root / "runs" / "ingest" / ingest_run / "manifest.json"
+    prim_output: str | None = None
+    po = reg.loc[idx, "primary_outputs"]
+    if isinstance(po, (list, tuple)) and po:
+        prim_output = str(po[0])
     stage_results.append(
         StageResult(
             name="ingest",
             run_id=ingest_run,
             manifest_path=ingest_manifest,
-            primary_output=str(reg.loc[idx, "primary_outputs"][0]) if isinstance(reg.loc[idx, "primary_outputs"], list) and reg.loc[idx, "primary_outputs"] else None,  # type: ignore[index]
+            primary_output=prim_output,
         )
     )
+    if verbose:
+        print(f"[orchestrator] ingest run_id={ingest_run}", file=sys.stderr)
 
     # 2) Optimizer
     opt_cfg = dict(stages_cfg["optimizer"])
@@ -217,6 +243,10 @@ def run_bundle(
             primary_output=str(opt_res.get("lineups_path")),
         )
     )
+    if verbose:
+        print(
+            f"[orchestrator] optimizer run_id={opt_res.get('run_id')}", file=sys.stderr
+        )
 
     # 3) Variants
     var_cfg = dict(stages_cfg["variants"])
@@ -241,6 +271,10 @@ def run_bundle(
             primary_output=str(var_res.get("catalog_path")),
         )
     )
+    if verbose:
+        print(
+            f"[orchestrator] variants run_id={var_res.get('run_id')}", file=sys.stderr
+        )
 
     # 4) Field Sampler
     fld_cfg = dict(stages_cfg["field"])
@@ -266,6 +300,8 @@ def run_bundle(
             primary_output=str(fld_res.get("field_path")),
         )
     )
+    if verbose:
+        print(f"[orchestrator] field run_id={fld_res.get('run_id')}", file=sys.stderr)
 
     # 5) GPP Sim
     sim_cfg = dict(stages_cfg["sim"])
@@ -278,7 +314,11 @@ def run_bundle(
         if "name" not in contest_obj:
             contest_obj["name"] = "Test Contest"
         contest_path = bundle_dir / "contest.json"
-        Path(contest_path).write_text(json.dumps(contest_obj, indent=2), encoding="utf-8")
+        # Persist authored contest block so downstream discovery
+        # (and users) can find it later
+        Path(contest_path).write_text(
+            json.dumps(contest_obj, indent=2), encoding="utf-8"
+        )
     sim_cfg_path = _write_stage_config(bundle_dir, "sim", sim_cfg)
     sim_res = sim.run_adapter(
         slate_id=slate_id,
@@ -305,6 +345,8 @@ def run_bundle(
             primary_output=str(sim_res.get("sim_results_path")),
         )
     )
+    if verbose:
+        print(f"[orchestrator] sim run_id={sim_res.get('run_id')}", file=sys.stderr)
 
     # Build bundle manifest
     bundle = {
@@ -333,17 +375,29 @@ def run_bundle(
             file=sys.stderr,
         )
 
-    return {"bundle_id": bundle_id, "bundle_path": str(bundle_path), "stages": [s.name for s in stage_results]}
+    return {
+        "bundle_id": bundle_id,
+        "bundle_path": str(bundle_path),
+        "stages": [s.name for s in stage_results],
+    }
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="python -m processes.orchestrator", description="Chain ingest→optimizer→variants→field→sim and create bundle.json")
+    p = argparse.ArgumentParser(
+        prog="python -m processes.orchestrator",
+        description="Chain ingest→optimizer→variants→field→sim and create bundle.json",
+    )
     p.add_argument("--slate-id", required=True)
     p.add_argument("--config", type=Path, required=True)
     p.add_argument("--config-kv", nargs="*")
     p.add_argument("--out-root", type=Path, default=Path("data"))
     p.add_argument("--schemas-root", type=Path)
-    p.add_argument("--validate", dest="validate", action=argparse.BooleanOptionalAction, default=True)
+    p.add_argument(
+        "--validate",
+        dest="validate",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--verbose", action="store_true")
     return p

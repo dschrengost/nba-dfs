@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 import pandas as pd
 
 from processes.orchestrator import adapter as orch
-
 
 DK_SLOTS = ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
 
@@ -17,7 +17,8 @@ def _make_players_csv(tmp: Path) -> tuple[Path, Path]:
     proj_csv = tmp / "projections.csv"
     # 8 simple players
     rows = [
-        {"dk_player_id": f"P{i}", "name": f"Player {i}", "team": "BOS", "pos": "PG"} for i in range(1, 9)
+        {"dk_player_id": f"P{i}", "name": f"Player {i}", "team": "BOS", "pos": "PG"}
+        for i in range(1, 9)
     ]
     pd.DataFrame(rows).to_csv(players_csv, index=False)
 
@@ -37,10 +38,17 @@ def _make_players_csv(tmp: Path) -> tuple[Path, Path]:
     return players_csv, proj_csv
 
 
-def _stub_optimizer_impl(projections_df: pd.DataFrame, constraints: Mapping[str, Any], seed: int, site: str, engine: str):
+def _stub_optimizer_impl(
+    projections_df: pd.DataFrame,
+    constraints: Mapping[str, Any],
+    seed: int,
+    site: str,
+    engine: str,
+):
     # Build 2 trivial lineups from first 8 player ids
     col = "dk_player_id" if "dk_player_id" in projections_df.columns else "player_id"
     ids = list(map(str, projections_df[col].astype(str).head(8)))
+
     def _lineup():
         return {
             "players": ids,
@@ -48,21 +56,26 @@ def _stub_optimizer_impl(projections_df: pd.DataFrame, constraints: Mapping[str,
             "total_salary": 50000,
             "proj_fp": 250.0,
         }
+
     return [
         _lineup(),
         _lineup(),
     ], {"seed": seed, "engine": engine}
 
 
-def _stub_variants_impl(parent_lineups_df: pd.DataFrame, knobs: Mapping[str, Any], seed: int):
+def _stub_variants_impl(
+    parent_lineups_df: pd.DataFrame, knobs: Mapping[str, Any], seed: int
+):
     variants: list[Mapping[str, Any]] = []
     for _, row in parent_lineups_df.head(1).iterrows():
-        variants.append({
-            "variant_id": "V1",
-            "parent_lineup_id": str(row["lineup_id"]),
-            "players": list(row["players"]),
-            # proj_fp/total_salary optional; adapter computes deltas
-        })
+        variants.append(
+            {
+                "variant_id": "V1",
+                "parent_lineup_id": str(row["lineup_id"]),
+                "players": list(row["players"]),
+                # proj_fp/total_salary optional; adapter computes deltas
+            }
+        )
     return variants, {"seed": seed}
 
 
@@ -70,19 +83,38 @@ def _stub_field_impl(catalog_df: pd.DataFrame, knobs: Mapping[str, Any], seed: i
     entrants = []
     # Take first variant
     v = catalog_df.iloc[0]
-    entrants.append({
-        "origin": "variant",
-        "variant_id": str(v["variant_id"]),
-        "players": list(v["players"]),
-        "weight": 1.0,
-    })
+    entrants.append(
+        {
+            "origin": "variant",
+            "variant_id": str(v["variant_id"]),
+            "players": list(v["players"]),
+            "weight": 1.0,
+        }
+    )
     return entrants, {"seed": seed}
 
 
-def _stub_sim_impl(field_df: pd.DataFrame, contest: Mapping[str, Any], knobs: Mapping[str, Any], seed: int):
+def _stub_sim_impl(
+    field_df: pd.DataFrame,
+    contest: Mapping[str, Any],
+    knobs: Mapping[str, Any],
+    seed: int,
+):
     rows = [
-        {"world_id": 1, "entrant_id": int(field_df.iloc[0]["entrant_id"]), "score": 300.0, "rank": 1, "prize": 500.0},
-        {"world_id": 1, "entrant_id": 999999, "score": 100.0, "rank": contest.get("field_size", 2), "prize": 0.0},
+        {
+            "world_id": 1,
+            "entrant_id": int(field_df.iloc[0]["entrant_id"]),
+            "score": 300.0,
+            "rank": 1,
+            "prize": 500.0,
+        },
+        {
+            "world_id": 1,
+            "entrant_id": 999999,
+            "score": 100.0,
+            "rank": contest.get("field_size", 2),
+            "prize": 0.0,
+        },
     ]
     aggs = {"ev_mean": 10.0, "roi_mean": 0.1}
     return rows, aggs, {"seed": seed}
@@ -102,7 +134,9 @@ def test_orchestrator_smoke(tmp_path, monkeypatch):
             "source": "manual",
             "projections": str(proj_csv),
             "player_ids": str(players_csv),
-            "mapping": str(Path("pipeline/ingest/mappings/example_source.yaml").resolve()),
+            "mapping": str(
+                Path("pipeline/ingest/mappings/example_source.yaml").resolve()
+            ),
         },
         "optimizer": {"site": "DK", "engine": "cbc", "config": {"num_lineups": 2}},
         "variants": {"config": {"num_variants": 1}},
@@ -125,10 +159,10 @@ def test_orchestrator_smoke(tmp_path, monkeypatch):
     cfg_path.write_text(json.dumps(cfg), encoding="utf-8")
 
     # Monkeypatch stage implementations
-    import processes.optimizer.adapter as opt
-    import processes.variants.adapter as var
     import processes.field_sampler.adapter as fld
     import processes.gpp_sim.adapter as gsim
+    import processes.optimizer.adapter as opt
+    import processes.variants.adapter as var
 
     monkeypatch.setattr(opt, "_load_optimizer", lambda: _stub_optimizer_impl)
     monkeypatch.setattr(var, "_load_variant", lambda: _stub_variants_impl)

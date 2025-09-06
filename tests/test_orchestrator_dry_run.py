@@ -23,4 +23,3 @@ def test_orchestrator_dry_run(tmp_path):
     )
     assert res["bundle_id"] == "DRY_RUN"
     assert any("ingest:" in step for step in res["plan"])  # type: ignore[index]
-
