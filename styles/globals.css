@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 255 255 255;
+  --foreground: 12 12 12;
+  --muted: 245 245 245;
+  --border: 230 230 230;
+}
+
+.bg-background { background-color: rgb(var(--background)); }
+.text-foreground { color: rgb(var(--foreground)); }
+.bg-muted\/20 { background-color: rgba(var(--muted), 0.2); }
+.bg-card\/30 { background-color: rgba(var(--muted), 0.3); }
+.bg-card\/40 { background-color: rgba(var(--muted), 0.4); }
+.border-border { border-color: rgb(var(--border)); }
+.text-muted-foreground { color: rgba(0,0,0,0.55); }
+.focus\:ring-ring:focus { outline: none; box-shadow: 0 0 0 2px rgba(59,130,246,0.5); }
+.focus-visible\:ring-ring:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(59,130,246,0.5); }
+.border-primary { border-color: rgb(59,130,246); }
+.text-primary { color: rgb(59,130,246); }
+.bg-background { background-color: rgb(var(--background)); }
+
+/* Minimal reset for layout visuals without Tailwind present */
+html, body, #__next { height: 100%; }
+
