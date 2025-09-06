@@ -5,8 +5,8 @@ on:
     branches: [ main ]
     paths:
       - 'processes/api/**'
-      - 'pipeline/**'
-      - 'tests/**'
+      - 'pipeline/schemas/**'
+      - 'tests/test_api_*'
       - 'pyproject.toml'
       - '.github/workflows/**'
   push:
@@ -15,8 +15,8 @@ on:
       - 'feat/**'
     paths:
       - 'processes/api/**'
-      - 'pipeline/**'
-      - 'tests/**'
+      - 'pipeline/schemas/**'
+      - 'tests/test_api_*'
       - 'pyproject.toml'
       - '.github/workflows/**'
 
@@ -78,4 +78,3 @@ jobs:
 
       - name: Pytest (full)
         run: uv run pytest -q
-
