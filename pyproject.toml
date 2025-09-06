@@ -82,6 +82,7 @@ known-first-party = ["pipeline", "processes", "app"]
 
 [tool.mypy]
 python_version = "3.11"
+plugins = ["pydantic.mypy"]
 strict = true
 pretty = true
 show_error_codes = true
@@ -91,11 +92,12 @@ warn_return_any = true
 disallow_subclassing_any = true
 disallow_any_generics = true
 no_implicit_optional = true
+# Keep this for other 3rd-party libs, but don't let it affect pydantic:
 ignore_missing_imports = true
 follow_imports = "skip"
-files = ["processes/optimizer/adapter.py"]
+# Let mypy check all our process modules by default (include API):
+files = ["processes/**/*.py"]
 exclude = "(?x)(^processes/optimizer/_legacy/|^frontend/|^app/streamlit/)"
-plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = "tests.*"
@@ -110,6 +112,24 @@ module = [
   "processes.optimizer._legacy.*",
 ]
 ignore_errors = true
+
+# IMPORTANT: ensure pydantic isn't ignored
+
+[[tool.mypy.overrides]]
+module = ["pydantic", "pydantic.*"]
+ignore_missing_imports = false
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true
+
+[[tool.mypy.overrides]]
+module = [
+  "processes.api.models",
+]
+disallow_subclassing_any = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
