@@ -74,3 +74,29 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Skip link utility */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  padding: 8px 12px;
+  border-radius: 0 0 6px 0;
+  z-index: 50;
+}
+.skip-link:focus {
+  top: 0;
+  outline: 2px solid hsl(var(--ring));
+}
+
+/* Reduced motion adjustments */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
