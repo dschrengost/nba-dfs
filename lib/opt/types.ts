@@ -47,6 +47,8 @@ export type RunSummary = {
   valid: number; // number of valid lineups produced
   bestScore: number;
   elapsedMs: number;
+  engineUsed?: "cp_sat" | "cbc";
+  diagnostics?: unknown;
   usingFixtureDate?: string | null; // present when fixture fallback was used
   optionsUsed?: RunOptions; // echo of options the run used
   invalidReasons?: {
