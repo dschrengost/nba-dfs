@@ -12,6 +12,7 @@ import { Button } from "./button";
 import { Skeleton } from "./skeleton";
 import { DRAWER_SKELETON_MS } from "@/lib/ui/constants";
 import { prefersReducedMotion } from "@/lib/ui/a11y";
+import IngestSummary from "../metrics/IngestSummary";
 
 export default function MetricsDrawer() {
   const [open, setOpen] = useState(false);
@@ -56,8 +57,9 @@ export default function MetricsDrawer() {
               <Skeleton className="h-4 w-5/6 motion-reduce:animate-none" />
             </div>
           ) : (
-            <div className="text-sm text-muted-foreground" aria-live="polite">
-              No metrics yet — run Optimizer or Simulator.
+            <div className="space-y-4">
+              <IngestSummary />
+              <div className="text-xs text-muted-foreground">Optimizer/Simulator metrics TBD.</div>
             </div>
           )}
         </div>
