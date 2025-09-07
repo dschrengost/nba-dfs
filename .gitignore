@@ -6,4 +6,10 @@ __pycache__/
 # Python cache
 __pycache__/
 *.py[cod]
+<<<<<<< HEAD
 docs/PRPs/*.md
+.env
+node_modules
+=======
+docs/PRPs/*.md
+>>>>>>> origin/main

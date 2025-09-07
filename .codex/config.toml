@@ -1,0 +1,14 @@
+# .codex/config.toml for nba-dfs project
+# Project-local MCP servers override any global settings
+
+[mcp_servers.shadcn]
+command = "npx"
+args = ["-y", "shadcn", "mcp"]
+# Allow UI scaffolding writes
+allowed_paths = ["./app", "./components", "./lib", "./styles", "./configs", "./docs", "./tests"]
+
+[mcp_servers.framelink_figma]
+command = "npx"
+args = ["-y", "figma-developer-mcp", "--stdio"]
+# Environment is inherited; set FIGMA_API_KEY in your shell or .env
+allowed_paths = ["./app", "./components", "./lib", "./styles", "./configs", "./docs", "./tests"]
