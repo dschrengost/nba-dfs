@@ -21,7 +21,7 @@ export default function UploadDropzone({ spotlight = false }: Props) {
   useEffect(() => {
     if (state === "dragOver") setMessage("Release to upload…");
     else if (state === "loading") setMessage("Uploading…");
-    else if (state === "success") setMessage("Projections loaded");
+    else if (state === "success") setMessage("Files loaded ✓");
     else if (state === "error") setMessage("Only .csv files are supported");
     else setMessage("Drag & drop projections.csv / player_ids.csv");
   }, [state]);
@@ -46,7 +46,6 @@ export default function UploadDropzone({ spotlight = false }: Props) {
       setTimeout(() => {
         setState("success");
         toast.success("CSV ingested");
-        setTimeout(() => setState("idle"), 900);
       }, delay);
     } catch (e: any) {
       setState("error");
@@ -103,7 +102,18 @@ export default function UploadDropzone({ spotlight = false }: Props) {
         className="hidden"
         onChange={(e) => handleFiles(e.currentTarget.files)}
       />
-      {message}
+      <div className="flex items-center justify-between w-full">
+        <div>{message}</div>
+        {state === "success" && (
+          <button
+            className="text-xs underline underline-offset-2 opacity-80 hover:opacity-100 focus:outline-none"
+            onClick={() => inputRef.current?.click()}
+            data-testid="replace-upload-button"
+          >
+            Replace
+          </button>
+        )}
+      </div>
     </Card>
   );
 }
