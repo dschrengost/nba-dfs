@@ -22,6 +22,7 @@ export const PROJ_ALIASES: Record<string, keyof z.infer<typeof ProjectionCsvSche
   id: "player_id_dk",
   salary: "salary",
   sal: "salary",
+  proj_fp: "proj_fp",
   proj: "proj_fp",
   projection: "proj_fp",
   fp: "proj_fp",
@@ -97,4 +98,3 @@ export const ProjectionCsvSchema = z.object({
 export type ProjectionCsv = z.infer<typeof ProjectionCsvSchema>;
 
 export type AliasMap<T extends z.ZodRawShape> = Record<string, keyof z.infer<z.ZodObject<T>>>;
-
