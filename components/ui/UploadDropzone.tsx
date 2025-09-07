@@ -5,6 +5,7 @@ import { Card } from "./card";
 import { toast } from "./sonner";
 import { UPLOAD_MIN_MS } from "@/lib/ui/constants";
 import { prefersReducedMotion } from "@/lib/ui/a11y";
+import { useIngestStore } from "@/lib/state/ingest-store";
 
 type Props = { spotlight?: boolean };
 type UploadState = "idle" | "dragOver" | "loading" | "success" | "error";
@@ -25,11 +26,11 @@ export default function UploadDropzone({ spotlight = false }: Props) {
     else setMessage("Drag & drop projections.csv / player_ids.csv");
   }, [state]);
 
-  function handleFiles(files: FileList | null) {
-    const file = files?.[0];
-    if (!file) return;
-    const ok = file.name.toLowerCase().endsWith(".csv");
-    if (!ok) {
+  async function handleFiles(files: FileList | null) {
+    const list = Array.from(files ?? []);
+    if (list.length === 0) return;
+    const bad = list.find((f) => !f.name.toLowerCase().endsWith(".csv"));
+    if (bad) {
       setState("error");
       toast.error("Only .csv files are supported");
       setTimeout(() => setState("idle"), 1200);
@@ -37,11 +38,21 @@ export default function UploadDropzone({ spotlight = false }: Props) {
     }
     setState("loading");
     const delay = reduced ? 200 : UPLOAD_MIN_MS;
-    setTimeout(() => {
-      setState("success");
-      toast.success("Projections loaded");
-      setTimeout(() => setState("idle"), 900);
-    }, delay);
+    try {
+      const ingest = useIngestStore.getState().ingestCsv;
+      for (const f of list) {
+        await ingest(f);
+      }
+      setTimeout(() => {
+        setState("success");
+        toast.success("CSV ingested");
+        setTimeout(() => setState("idle"), 900);
+      }, delay);
+    } catch (e: any) {
+      setState("error");
+      toast.error(e?.message ?? "Failed to ingest CSV");
+      setTimeout(() => setState("idle"), 1200);
+    }
   }
 
   return (
@@ -88,6 +99,7 @@ export default function UploadDropzone({ spotlight = false }: Props) {
         ref={inputRef}
         type="file"
         accept=".csv"
+        multiple
         className="hidden"
         onChange={(e) => handleFiles(e.currentTarget.files)}
       />
