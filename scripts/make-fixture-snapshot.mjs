@@ -47,7 +47,7 @@ function normalizePlayers(rows) {
     return {
       player_id_dk: pid === null ? null : String(pid).trim(),
       player_name: String(r.player_name ?? r.name ?? "").trim(),
-      team: String(r.team ?? r.team_abbrev ?? r.teamabbrev ?? "").trim().toUpperCase(),
+      team: normalizeTeam(String(r.team ?? r.team_abbrev ?? r.teamabbrev ?? "")),
       pos_primary: String(posSplit[0] ?? "").trim(),
       pos_secondary: posSplit.length > 1 ? String(posSplit[1]).trim() : null,
     };
@@ -60,6 +60,8 @@ function normalizeProjections(rows) {
     return {
       player_id_dk: pid === null ? null : String(pid).trim(),
       name: String(r.name ?? r.player_name ?? "").trim(),
+      team: normalizeTeam(String(r.team ?? r.team_abbrev ?? "")),
+      position: String(r.position ?? r.pos ?? "").trim(),
       salary: Number(r.salary ?? r.sal ?? 0),
       proj_fp: Number(r.proj_fp ?? r.proj ?? r.projection ?? r.fp ?? r.fpts ?? 0),
       mins: coerceNumber(r.mins ?? r.minutes),
@@ -73,16 +75,40 @@ function normalizeProjections(rows) {
 }
 
 function merge(players, projections) {
-  const byId = new Map(projections.filter(p=>p.player_id_dk).map((p) => [p.player_id_dk, p]));
-  const byName = new Map(projections.map((p) => [p.name?.toLowerCase(), p]));
+  const byId = new Map(projections.filter((p) => p.player_id_dk).map((p) => [p.player_id_dk, p]));
+  const byComposite = new Map(
+    projections.map((p) => [makeKey(p.name, p.team, (p.position ?? p.pos ?? "").split("/")[0] ?? ""), p])
+  );
   const out = [];
   for (const pl of players) {
     let pj = pl.player_id_dk ? byId.get(pl.player_id_dk) : undefined;
-    if (!pj) pj = byName.get(pl.player_name.toLowerCase());
+    if (!pj)
+      pj = byComposite.get(makeKey(pl.player_name, pl.team, pl.pos_primary));
     if (!pj) continue;
-    out.push({ ...pl, ...pj });
+    // Keep the player_id_dk from players as the source of truth
+    out.push({ ...pj, ...pl, player_id_dk: pl.player_id_dk });
   }
   return out;
+}
+
+function normalizeTeam(t) {
+  const u = String(t).trim().toUpperCase();
+  const m = { NO: "NOP", NOP: "NOP", PHO: "PHX", PHX: "PHX", SA: "SAS", SAS: "SAS" };
+  return m[u] ?? u;
+}
+
+function normalizeNameKey(name) {
+  return String(name)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/\./g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function makeKey(name, team, pos) {
+  return `${normalizeNameKey(name)}|${normalizeTeam(team)}|${String(pos).toUpperCase()}`;
 }
 
 function main() {
