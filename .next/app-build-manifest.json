@@ -15,21 +15,6 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/(studio)/optimizer/page.js"
-    ],
-    "/(studio)/simulator/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/(studio)/simulator/page.js"
-    ],
-    "/(studio)/field/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/(studio)/field/page.js"
-    ],
-    "/(studio)/variants/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/(studio)/variants/page.js"
     ]
   }
 }
