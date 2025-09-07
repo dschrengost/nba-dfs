@@ -1,30 +1,4 @@
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Python cache
-__pycache__/
-*.py[cod]
-<<<<<<< HEAD
-docs/PRPs/*.md
-.env
-node_modules
-=======
-docs/PRPs/*.md
->>>>>>> origin/main
-# Next.js
-.next/
-# Dependencies
-node_modules/
-# TypeScript build info
-*.tsbuildinfo
-# Local logs
-npm-debug.log*
-pnpm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-# Python
+# ---- Python caches ----
 __pycache__/
 *.py[cod]
 *.pyo
@@ -33,11 +7,18 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 
-# Next.js / Node
-.next/
+# ---- Node / Next.js ----
 node_modules/
+.next/
 *.tsbuildinfo
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# ---- Local env (do NOT commit) ----
+# Keep .env out of Git, but don't accidentally delete it when cleaning:
+.env
+
+# ---- Docs you don't want in repo (adjust as needed) ----
+docs/PRPs/*.md
