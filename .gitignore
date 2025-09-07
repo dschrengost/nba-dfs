@@ -13,3 +13,14 @@ node_modules
 =======
 docs/PRPs/*.md
 >>>>>>> origin/main
+# Next.js
+.next/
+# Dependencies
+node_modules/
+# TypeScript build info
+*.tsbuildinfo
+# Local logs
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
