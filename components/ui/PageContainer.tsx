@@ -2,13 +2,18 @@
 
 import UploadDropzone from "./UploadDropzone";
 import ControlsBar from "./ControlsBar";
+import type { GridMode } from "./LineupGridPlaceholder";
 
 export default function PageContainer({
   title,
   children,
+  gridMode,
+  onGridModeChange,
 }: {
   title: string;
   children: React.ReactNode;
+  gridMode?: GridMode;
+  onGridModeChange?: (m: GridMode) => void;
 }) {
   return (
     <div className="relative flex flex-col h-full">
@@ -22,9 +27,8 @@ export default function PageContainer({
         </div>
       </div>
       <div className="mt-auto">
-        <ControlsBar />
+        <ControlsBar gridMode={gridMode} onGridModeChange={onGridModeChange} />
       </div>
     </div>
   );
 }
-

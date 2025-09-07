@@ -79,14 +79,14 @@
 .skip-link {
   position: absolute;
   top: -40px;
-  left: 0;
+  left: 0.5rem;
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   padding: 8px 12px;
   border-radius: 0 0 6px 0;
-  z-index: 50;
+  z-index: 9999;
 }
-.skip-link:focus {
+.skip-link:focus, .skip-link:focus-visible {
   top: 0;
   outline: 2px solid hsl(var(--ring));
 }
