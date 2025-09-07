@@ -14,7 +14,7 @@ export default function ControlsBar({
   onGridModeChange?: (m: GridMode) => void;
 }) {
   const { status, run, reset, options, setOptions, runSolve } = useRunStore();
-  const showDev = process.env.NODE_ENV !== "production" && onGridModeChange;
+  const showDev = process.env.NEXT_PUBLIC_DEV_UI === "true" && onGridModeChange;
 
   // New UX controls state
   const [nLineups, setNLineups] = useState<number>(5);
@@ -59,7 +59,7 @@ export default function ControlsBar({
 
   return (
     <div className="h-auto w-full border-t border-border px-4 py-3 flex flex-col gap-3 bg-background">
-      <div className="text-sm font-medium opacity-80">Controls / Knobs</div>
+      <div className="text-sm font-medium opacity-80">Optimizer Settings</div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 items-end">
         <div>
           <label className="block text-[11px] opacity-70 mb-1">Seed</label>
@@ -228,7 +228,26 @@ export default function ControlsBar({
         <div />
       )}
       <div className="flex gap-2 justify-end">
-        <Button onClick={onRunClick} disabled={status === "running"}>Run</Button>
+        <Button onClick={onRunClick} disabled={status === "running"}>
+          {status === "running" ? (
+            <span className="inline-flex items-center gap-2">
+              {/* lucide-react loader */}
+              <svg
+                className="animate-spin h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden
+              >
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+              Running…
+            </span>
+          ) : (
+            "Run"
+          )}
+        </Button>
         <Button variant="outline" onClick={() => reset()} disabled={status === "running"}>
           Reset
         </Button>
