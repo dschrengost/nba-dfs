@@ -13,6 +13,7 @@ import { Skeleton } from "./skeleton";
 import { DRAWER_SKELETON_MS } from "@/lib/ui/constants";
 import { prefersReducedMotion } from "@/lib/ui/a11y";
 import IngestSummary from "../metrics/IngestSummary";
+import RunSummary from "../metrics/RunSummary";
 
 export default function MetricsDrawer() {
   const [loading, setLoading] = useState(false);
@@ -65,7 +66,7 @@ export default function MetricsDrawer() {
           ) : (
             <div className="space-y-4">
               <IngestSummary />
-              <div className="text-xs text-muted-foreground">Optimizer/Simulator metrics TBD.</div>
+              <RunSummary />
             </div>
           )}
         </div>
