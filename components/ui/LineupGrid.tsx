@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { ScrollArea } from "./scroll-area";
 import { Card } from "./card";
 import { useRunStore } from "@/lib/state/run-store";
@@ -47,4 +48,3 @@ export default function LineupGrid() {
     </div>
   );
 }
-
