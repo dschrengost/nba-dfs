@@ -7,6 +7,7 @@ import "../styles/globals.css";
 import TopStatusBar from "../components/ui/TopStatusBar";
 import TopTabs from "../components/ui/TopTabs";
 import MetricsDrawer from "../components/ui/MetricsDrawer";
+import { Separator } from "../components/ui/separator";
 
 export default function RootLayout({
   children,
@@ -19,6 +20,7 @@ export default function RootLayout({
         <div className="flex flex-col min-h-screen">
           <TopStatusBar />
           <TopTabs />
+          <Separator />
           <div className="relative flex-1">
             {children}
           </div>
@@ -28,4 +30,3 @@ export default function RootLayout({
     </html>
   );
 }
-
