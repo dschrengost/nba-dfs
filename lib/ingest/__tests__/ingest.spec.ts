@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { PlayerCsvSchema, ProjectionCsvSchema, PLAYER_ALIASES, PROJ_ALIASES } from "@/lib/ingest/schemas";
-import { parseCsvStream } from "@/lib/ingest/parse";
-import { mergePlayers, normalizePlayers, normalizeProjections } from "@/lib/ingest/normalize";
+import { PlayerCsvSchema, ProjectionCsvSchema, PLAYER_ALIASES, PROJ_ALIASES } from "../../ingest/schemas";
+import { parseCsvStream } from "../../ingest/parse";
+import { mergePlayers, normalizePlayers, normalizeProjections } from "../../ingest/normalize";
 
 const playersCsv = `player_id_dk,player_name,team,pos_primary,pos_secondary\n1001,LeBron James,LAL,SF,PF\n1002,Stephen Curry,GSW,PG,`;
 const projectionsCsv = `player_id_dk,salary,proj_fp,mins,ownership,ceiling,floor,source,version_ts\n1001,10500,55.5,36,18.2,70,40,Rotogrinders,2025-09-04T17:15:00Z\n1002,9800,50.1,34,,65,35,Rotogrinders,2025-09-04T17:15:00Z`;
@@ -38,4 +38,3 @@ function lower<T extends Record<string, any>>(obj: T): T {
   for (const [k, v] of Object.entries(obj)) out[k.toLowerCase()] = v;
   return out as T;
 }
-
