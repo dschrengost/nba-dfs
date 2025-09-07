@@ -1,7 +1,7 @@
 "use client";
 
 import type { MergedPlayer } from "@/lib/domain/types";
-import type { OptimizationRequest, OptimizationResult, OptimizerConfig, WorkerMessageOut } from "@/lib/opt/types";
+import type { OptimizationRequest, OptimizationResult, OptimizerConfig, RunOptions, WorkerMessageOut } from "@/lib/opt/types";
 
 export type RunHandle = { cancel: () => void };
 
@@ -10,7 +10,8 @@ export function runInWorker(
   config: OptimizerConfig,
   seed: string | number,
   targetLineups: number,
-  onEvent?: (msg: WorkerMessageOut) => void
+  onEvent?: (msg: WorkerMessageOut) => void,
+  options?: RunOptions
 ): { handle: RunHandle; promise: Promise<OptimizationResult> } {
   const worker = new Worker(new URL("../../workers/optimizer.worker.ts", import.meta.url));
   let done = false;
@@ -32,7 +33,14 @@ export function runInWorker(
         }
       }
     };
-    const req: OptimizationRequest = { players, config, seed, targetLineups };
+    const req: OptimizationRequest = {
+      players,
+      config,
+      seed: options?.seed ?? seed,
+      targetLineups,
+      maxCandidates: options?.candidates,
+      options,
+    };
     worker.postMessage({ type: "run", req });
   });
   return {
@@ -44,4 +52,3 @@ export function runInWorker(
     promise,
   };
 }
-

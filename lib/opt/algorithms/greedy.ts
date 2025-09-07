@@ -24,9 +24,30 @@ function seedToInt(seed: string | number): number {
   return h >>> 0;
 }
 
-function scoreLineup(line: Lineup, byId: Map<string, MergedPlayer>): number {
+function scoreLineup(
+  line: Lineup,
+  byId: Map<string, MergedPlayer>,
+  randomnessPct = 0,
+  ownershipPenalty = false
+): number {
   let s = 0;
-  for (const { player_id_dk } of line.slots) s += byId.get(player_id_dk)?.proj_fp ?? 0;
+  const noise = Math.max(0, Math.min(100, randomnessPct)) / 100;
+  for (const { player_id_dk } of line.slots) {
+    const p = byId.get(player_id_dk);
+    if (!p) continue;
+    let proj = p.proj_fp ?? 0;
+    if (noise > 0) {
+      // Uniform jitter in ±noise range (deterministic via id hash)
+      const h = seedToInt(player_id_dk) % 1000;
+      const u = (h / 1000) * 2 - 1; // [-1, 1)
+      proj = proj * (1 + u * noise);
+    }
+    if (ownershipPenalty && p.ownership && p.ownership > 0) {
+      // Minimal no-op-ish penalty: subtract a tiny fraction to keep behavior stable
+      proj = proj - 0.0 * p.ownership; // intentionally 0 for now (plumb only)
+    }
+    s += proj;
+  }
   return s;
 }
 
@@ -57,19 +78,30 @@ export function greedyRandom(
   req: OptimizationRequest,
   onProgress?: ProgressCb
 ): OptimizationResult {
-  const rng = makeRng(seedToInt(req.seed));
-  const { salaryCap, slots, maxPerTeam } = req.config;
+  const opts = req.options ?? ({} as any);
+  const seed = (opts.seed ?? req.seed) as string | number;
+  const rng = makeRng(seedToInt(seed));
+  const salaryCap = (opts.salaryCap ?? req.config.salaryCap) as number;
+  const slots = req.config.slots;
+  const maxPerTeam = (opts.teamCap ?? req.config.maxPerTeam) as number | undefined;
+  const minSalary = (opts.minSalary ?? 0) as number;
+  const randomnessPct = (opts.randomnessPct ?? 0) as number;
+  const ownershipPenalty = Boolean(opts.ownershipPenalty);
   const byId = new Map(req.players.map((p) => [getId(p), p] as const));
   const eligibleBySlot: Record<Slot, MergedPlayer[]> = Object.fromEntries(
     slots.map((s) => [s, req.players.filter((p) => eligibleForSlot(p, s))])
   ) as any;
 
   const target = Math.max(1, req.targetLineups);
-  const maxCand = Math.max(target * 2, req.maxCandidates ?? target * 200);
+  const maxCand = Math.max(
+    target * 2,
+    (req.maxCandidates ?? opts.candidates ?? target * 200) as number
+  );
   let tried = 0;
   let valid = 0;
   const out: Lineup[] = [];
   const seen = new Set<string>();
+  const reasons = { salary: 0, slots: 0, teamcap: 0, dup: 0 };
 
   while (tried < maxCand && out.length < target) {
     tried++;
@@ -80,12 +112,17 @@ export function greedyRandom(
     let runningSalary = 0;
 
     for (const sl of slots) {
-      const pool = eligibleBySlot[sl].filter((p) => !used.has(getId(p)) && withinTeamCap(teamCounts, p.team, maxPerTeam));
+      const elig = eligibleBySlot[sl];
+      const pool = elig.filter((p) => !used.has(getId(p)) && withinTeamCap(teamCounts, p.team, maxPerTeam));
       // prune by salary: keep only those that fit now
       const affordable = pool.filter((p) => runningSalary + p.salary <= salaryCap);
       const choice = pick(affordable.length > 0 ? affordable : pool, rng);
       if (!choice) {
         ok = false;
+        // Diagnose reason if we can
+        if (elig.length === 0) reasons.slots++;
+        else if (pool.length === 0) reasons.teamcap++;
+        else reasons.salary++;
         break;
       }
       used.add(getId(choice));
@@ -94,6 +131,7 @@ export function greedyRandom(
       picked.push({ slot: sl, player_id_dk: getId(choice) });
       if (runningSalary > salaryCap) {
         ok = false;
+        reasons.salary++;
         break;
       }
     }
@@ -110,16 +148,23 @@ export function greedyRandom(
       score: 0,
     };
     if (line.salary > salaryCap) {
+      reasons.salary++;
+      if (onProgress && tried % 250 === 0) onProgress(tried, valid);
+      continue;
+    }
+    if (minSalary && line.salary < minSalary) {
+      reasons.salary++;
       if (onProgress && tried % 250 === 0) onProgress(tried, valid);
       continue;
     }
     const key = line.id;
     if (seen.has(key)) {
+      reasons.dup++;
       if (onProgress && tried % 250 === 0) onProgress(tried, valid);
       continue;
     }
     seen.add(key);
-    line.score = scoreLineup(line, byId);
+    line.score = scoreLineup(line, byId, randomnessPct, ownershipPenalty);
     line.salary = computeSalary(line, byId);
     out.push(line);
     valid++;
@@ -131,6 +176,21 @@ export function greedyRandom(
   const bestScore = out[0]?.score ?? 0;
   return {
     lineups: out,
-    summary: { tried, valid, bestScore, elapsedMs: 0 },
+    summary: {
+      tried,
+      valid,
+      bestScore,
+      elapsedMs: 0,
+      optionsUsed: {
+        seed,
+        candidates: maxCand,
+        teamCap: maxPerTeam ?? 0,
+        salaryCap,
+        minSalary: minSalary || 0,
+        randomnessPct,
+        ownershipPenalty,
+      },
+      invalidReasons: reasons,
+    },
   };
 }

@@ -1,5 +1,15 @@
 import type { MergedPlayer } from "@/lib/domain/types";
 
+export type RunOptions = {
+  seed: string | number;
+  candidates: number; // how many candidates to try (upper bound)
+  teamCap: number; // 0 disables
+  salaryCap: number;
+  minSalary?: number; // optional lower bound
+  randomnessPct?: number; // 0-100
+  ownershipPenalty?: boolean; // passthrough; may be no-op for now
+};
+
 export type Slot =
   | "PG"
   | "SG"
@@ -22,6 +32,7 @@ export type OptimizationRequest = {
   seed: string | number;
   targetLineups: number; // how many valid lineups to produce
   maxCandidates?: number; // optional limit on candidates sampled
+  options?: RunOptions; // knobs used for this run (echoed back)
 };
 
 export type Lineup = {
@@ -37,6 +48,13 @@ export type RunSummary = {
   bestScore: number;
   elapsedMs: number;
   usingFixtureDate?: string | null; // present when fixture fallback was used
+  optionsUsed?: RunOptions; // echo of options the run used
+  invalidReasons?: {
+    salary: number;
+    slots: number;
+    teamcap: number;
+    dup: number;
+  };
 };
 
 export type OptimizationResult = {
@@ -53,4 +71,3 @@ export type WorkerMessageOut =
   | { type: "progress"; tried: number; valid: number }
   | { type: "error"; message: string }
   | { type: "done"; res: OptimizationResult };
-
