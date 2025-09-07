@@ -33,7 +33,7 @@ export default function LineupGrid() {
                   </div>
                   <div className="mt-2 grid grid-cols-4 gap-1">
                     {lu.slots.map((s, idx) => (
-                      <div key={idx} className="truncate" title={`${s.slot} • ${s.player_id_dk}`}>
+                      <div key={idx} className="truncate" title={`${s.name ?? ""} (${s.pos ?? s.slot}) — ${s.team ?? ""} — $${s.salary ?? ""} — own ${Math.round(100 * (s.own_proj ?? 0))}%`>
                         <span className="opacity-60">{s.slot}</span> {s.player_id_dk}
                       </div>
                     ))}

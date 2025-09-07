@@ -53,7 +53,15 @@ async function runViaPython(
   }
   const lineups = (data.lineups as any[]).map((lu) => ({
     id: String(lu.lineup_id),
-    slots: (lu.players as any[]).map((pl) => ({ slot: pl.pos, player_id_dk: pl.dk_id ?? pl.player_id })),
+    slots: (lu.players as any[]).map((pl) => ({
+      slot: pl.pos,
+      player_id_dk: pl.dk_id ?? pl.player_id,
+      name: pl.name,
+      team: pl.team,
+      salary: pl.salary,
+      own_proj: pl.own_proj,
+      pos: pl.pos,
+    })),
     salary: lu.total_salary,
     score: lu.total_proj,
   }));

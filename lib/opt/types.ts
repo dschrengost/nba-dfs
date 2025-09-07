@@ -37,7 +37,7 @@ export type OptimizationRequest = {
 
 export type Lineup = {
   id: string;
-  slots: { slot: Slot; player_id_dk: string }[]; // length === config.slots.length
+  slots: { slot: Slot; player_id_dk: string; name?: string; team?: string; salary?: number; own_proj?: number; pos?: string }[]; // length === config.slots.length
   salary: number;
   score: number; // sum of proj_fp or objective value
 };

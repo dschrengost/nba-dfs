@@ -3,7 +3,7 @@
 import { useRunStore } from "@/lib/state/run-store";
 
 export default function RunSummary() {
-  const { summary, tried, valid } = useRunStore();
+  const { summary } = useRunStore();
   if (!summary) return null;
   return (
     <div className="text-sm">
@@ -21,8 +21,8 @@ export default function RunSummary() {
         ) : null}
       </div>
       <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-        <div className="flex justify-between"><dt className="opacity-70">Candidates tried</dt><dd>{tried}</dd></div>
-        <div className="flex justify-between"><dt className="opacity-70">Valid lineups</dt><dd>{valid}</dd></div>
+        <div className="flex justify-between"><dt className="opacity-70">Candidates tried</dt><dd>{summary.tried}</dd></div>
+        <div className="flex justify-between"><dt className="opacity-70">Valid lineups</dt><dd>{summary.valid}</dd></div>
         <div className="flex justify-between"><dt className="opacity-70">Best score</dt><dd>{summary.bestScore.toFixed(2)}</dd></div>
         <div className="flex justify-between"><dt className="opacity-70">Elapsed</dt><dd>{summary.elapsedMs} ms</dd></div>
       </dl>

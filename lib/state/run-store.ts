@@ -29,6 +29,18 @@ type State = {
   options: RunOptions;
   setOptions: (patch: Partial<RunOptions>) => void;
   run: (opts?: { target?: number; config?: Partial<OptimizerConfig> }) => Promise<void>;
+  runSolve: (inputs: {
+    site: "dk" | "fd";
+    projectionsPath: string;
+    playerIdsPath?: string;
+    nLineups: number;
+    penaltyEnabled: boolean;
+    lambdaVal?: number;
+    penaltyCurve?: "linear" | "g_curve";
+    dropIntensity?: number; // 0.0 - 0.5
+    seed?: number;
+    sigma?: number; // 0.0 - 0.25
+  }) => Promise<void>;
   reset: () => void;
 };
 
@@ -54,9 +66,10 @@ export const useRunStore = create<State>((set, get) => ({
     randomnessPct: DEFAULT_RANDOMNESS_PCT,
     ownershipPenalty: DEFAULT_OWNERSHIP_PENALTY,
   },
-  setOptions: (patch) =>
-    set((s) => ({ options: { ...s.options, ...patch } })),
+  setOptions: (patch) => set((s) => ({ options: { ...s.options, ...patch } })),
   reset: () => set({ status: "idle", lineups: [], summary: null, tried: 0, valid: 0, error: null }),
+
+  // Legacy/worker-based run (kept for dev)
   run: async ({ target = 100, config = {} } = {}) => {
     let players = useIngestStore.getState().merged;
     let usingFixtureDate: string | null = null;
@@ -71,7 +84,6 @@ export const useRunStore = create<State>((set, get) => ({
       }
     }
     const opts = get().options;
-    // Merge display config with options for this run
     const cfg: OptimizerConfig = {
       ...DEFAULT_CONFIG,
       ...config,
@@ -81,14 +93,115 @@ export const useRunStore = create<State>((set, get) => ({
     };
     set({ status: "running", tried: 0, valid: 0, error: null, lineups: [], summary: null });
     try {
-      const { promise } = runInWorker(players, cfg, String(opts.seed), target, (evt) => {
-        if (evt.type === "progress") set({ tried: evt.tried, valid: evt.valid });
-      }, opts);
+      const { promise } = runInWorker(
+        players,
+        cfg,
+        String(opts.seed),
+        target,
+        (evt) => {
+          if (evt.type === "progress") set({ tried: evt.tried, valid: evt.valid });
+        },
+        opts
+      );
       const res = await promise;
       if (usingFixtureDate) res.summary.usingFixtureDate = usingFixtureDate;
       set({ status: "done", lineups: res.lineups, summary: res.summary });
     } catch (e: any) {
       set({ status: "error", error: e?.message ?? String(e) });
+    }
+  },
+
+  // New path-first runner that posts to /api/optimize (Python wrapper)
+  runSolve: async (inputs) => {
+    const {
+      site,
+      projectionsPath,
+      playerIdsPath,
+      nLineups,
+      penaltyEnabled,
+      lambdaVal = 0,
+      penaltyCurve = "linear",
+      dropIntensity = 0,
+      seed = 42,
+      sigma = 0,
+    } = inputs || ({} as any);
+
+    set({ status: "running", tried: 0, valid: 0, error: null, lineups: [], summary: null });
+
+    const ownership_penalty = penaltyEnabled
+      ? {
+          enabled: true,
+          mode: penaltyCurve === "g_curve" ? "g_curve" : "by_points",
+          weight_lambda: Number(lambdaVal) || 0,
+        }
+      : { enabled: false };
+
+    const body: any = {
+      site,
+      enginePreferred: "cp_sat",
+      constraints: {
+        N_lineups: Math.max(1, Number(nLineups) || 5),
+        ownership_penalty,
+        pruning: { drop_pct: Math.max(0, Math.min(0.5, Number(dropIntensity) || 0)) },
+        randomness_pct: Math.round((Number(sigma) || 0) * 100),
+      },
+      seed: Number(seed) || 42,
+      projectionsPath,
+      playerIdsPath,
+    };
+
+    try {
+      const res = await fetch("/api/optimize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || `Request failed (${res.status})`);
+      }
+
+      const lineups = data.lineups ?? [];
+      set({
+        status: "done",
+        lineups,
+        summary: {
+          ...data.summary,
+          valid: lineups.length,
+          tried: data.diagnostics?.N ?? data.summary?.tried ?? lineups.length,
+          elapsedMs:
+            data.summary?.elapsedMs ?? (data.diagnostics?.wall_time_sec ? Math.round(1000 * data.diagnostics.wall_time_sec) : 0),
+          bestScore: data.summary?.bestScore,
+          engineUsed: data.engineUsed ?? data.diagnostics?.engine,
+          diagnostics: data.diagnostics,
+        },
+      });
+
+      // Toast warnings
+      try {
+        const { toast } = await import("@/components/ui/sonner");
+        const matched = data.diagnostics?.matched_players;
+        if (typeof matched === "number" && matched < 90) {
+          (toast as any).warning?.("Low DK ID match rate; check playerIdsPath") ||
+            (toast as any).warn?.("Low DK ID match rate; check playerIdsPath") ||
+            toast("Low DK ID match rate; check playerIdsPath");
+        }
+        const ownMax =
+          data.diagnostics?.normalization?.ownership?.max_after ??
+          data.diagnostics?.normalization?.ownership?.own_max_after ?? 0;
+        if (ownership_penalty.enabled && (ownMax ?? 0) === 0) {
+          (toast as any).info?.("Ownerships are all 0; penalty has no effect") ||
+            toast("Ownerships are all 0; penalty has no effect");
+        }
+      } catch {
+        // no-op if toast not available
+      }
+    } catch (e: any) {
+      set({ status: "error", error: e?.message ?? String(e) });
+      try {
+        const { toast } = await import("@/components/ui/sonner");
+        (toast as any).error?.(String(e?.message ?? e)) || toast(String(e?.message ?? e));
+      } catch {}
     }
   },
 }));
