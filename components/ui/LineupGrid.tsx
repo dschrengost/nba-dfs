@@ -5,7 +5,16 @@ import { ScrollArea } from "./scroll-area";
 import { Card } from "./card";
 import { useRunStore } from "@/lib/state/run-store";
 
-export default function LineupGrid() {
+function composeTitle(s: any): string {
+  const name = s?.name ?? "";
+  const pos = s?.pos ?? s?.slot ?? "";
+  const team = s?.team ?? "";
+  const sal = s?.salary ?? "";
+  const own = Math.round(100 * (s?.own_proj ?? 0));
+  return `${name} (${pos}) - ${team} - $${sal} - own ${own}%`;
+}
+
+export default function LineupGrid(): JSX.Element {
   const { status, lineups } = useRunStore();
   return (
     <div className="w-full h-full rounded-md border border-border bg-card/30 p-4" role="region" aria-label="Optimizer Results">
@@ -13,7 +22,7 @@ export default function LineupGrid() {
       <div className="mt-4 h-[calc(100%-2rem)]">
         {status === "idle" && (
           <div className="h-full flex items-center justify-center text-sm text-muted-foreground" aria-live="polite">
-            No results yet — click Run to generate lineups.
+            No results yet - click Run to generate lineups.
           </div>
         )}
         {status === "running" && (
@@ -34,7 +43,7 @@ export default function LineupGrid() {
                   </div>
                   <div className="mt-2 grid grid-cols-4 gap-1">
                     {lu.slots.map((s, idx) => (
-                      <div key={idx} className="truncate" title={`${s.name ?? ""} (${s.pos ?? s.slot}) — ${s.team ?? ""} — $${s.salary ?? ""} — own ${Math.round(100 * (s.own_proj ?? 0))}%`>
+                      <div key={idx} className="truncate" title={composeTitle(s)}>
                         <span className="opacity-60">{s.slot}</span> {s.player_id_dk}
                       </div>
                     ))}
@@ -48,3 +57,4 @@ export default function LineupGrid() {
     </div>
   );
 }
+
