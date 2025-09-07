@@ -5,6 +5,8 @@ import { Button } from "./button";
 import { useRunStore } from "@/lib/state/run-store";
 import type { GridMode } from "./LineupGridPlaceholder";
 import { Input } from "./input";
+import { Slider } from "./slider";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";
 
 export default function ControlsBar({
   gridMode,
@@ -58,9 +60,10 @@ export default function ControlsBar({
     });
 
   return (
-    <div className="h-auto w-full border-t border-border px-4 py-3 flex flex-col gap-3 bg-background">
-      <div className="text-sm font-medium opacity-80">Optimizer Settings</div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 items-end">
+    <TooltipProvider>
+      <div className="h-auto w-full border-t border-border px-4 py-3 flex flex-col gap-3 bg-background">
+        <div className="text-sm font-medium opacity-80">Optimizer Settings</div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 items-end">
         <div>
           <label className="block text-[11px] opacity-70 mb-1">Seed</label>
           <Input
@@ -90,25 +93,49 @@ export default function ControlsBar({
           />
         </div>
         <div>
-          <label className="block text-[11px] opacity-70 mb-1">Sigma (0-0.25)</label>
-          <Input
-            type="number"
-            step="0.01"
-            value={Number(sigma)}
-            onChange={(e) => setSigma(Math.max(0, Math.min(0.25, Number(e.target.value || 0))))}
+          <div className="flex items-center justify-between">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <label className="block text-[11px] opacity-70 mb-1 cursor-help">Sigma (0–0.25)</label>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Randomness applied to projections. 0 = deterministic; 0.25 = high variance.</p>
+              </TooltipContent>
+            </Tooltip>
+            <div className="text-[11px] opacity-70 ml-2">{sigma.toFixed(3)}</div>
+          </div>
+          <Slider
+            value={[Math.max(0, Math.min(0.25, sigma))]}
             min={0}
             max={0.25}
+            step={0.005}
+            onValueChange={(v) => setSigma(v?.[0] ?? 0)}
+            className="mt-1"
+            data-testid="sigma-slider"
+            aria-label="Sigma"
           />
         </div>
         <div>
-          <label className="block text-[11px] opacity-70 mb-1">Drop intensity (0-0.5)</label>
-          <Input
-            type="number"
-            step="0.01"
-            value={Number(dropIntensity)}
-            onChange={(e) => setDropIntensity(Math.max(0, Math.min(0.5, Number(e.target.value || 0))))}
+          <div className="flex items-center justify-between">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <label className="block text-[11px] opacity-70 mb-1 cursor-help">Drop intensity (0–0.5)</label>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Prunes low-projection players to speed up search. 0 = keep all; 0.5 = aggressive pruning.</p>
+              </TooltipContent>
+            </Tooltip>
+            <div className="text-[11px] opacity-70 ml-2">{dropIntensity.toFixed(3)}</div>
+          </div>
+          <Slider
+            value={[Math.max(0, Math.min(0.5, dropIntensity))]}
             min={0}
             max={0.5}
+            step={0.01}
+            onValueChange={(v) => setDropIntensity(v?.[0] ?? 0)}
+            className="mt-1"
+            data-testid="drop-slider"
+            aria-label="Drop intensity"
           />
         </div>
         <div className="flex items-center gap-2 mt-1">
@@ -253,5 +280,6 @@ export default function ControlsBar({
         </Button>
       </div>
     </div>
+    </TooltipProvider>
   );
 }
