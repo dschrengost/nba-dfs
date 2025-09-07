@@ -46,13 +46,20 @@ function lineupKey(playerIds: string[]): string {
   return playerIds.slice().sort().join("|");
 }
 
+function getId(p: MergedPlayer): string {
+  const id = (p as any).player_id_dk ?? null;
+  if (id && String(id).trim() !== "") return String(id);
+  // Fallback to name for fixtures without DK ID
+  return String((p as any).player_name ?? (p as any).name ?? "");
+}
+
 export function greedyRandom(
   req: OptimizationRequest,
   onProgress?: ProgressCb
 ): OptimizationResult {
   const rng = makeRng(seedToInt(req.seed));
   const { salaryCap, slots, maxPerTeam } = req.config;
-  const byId = new Map(req.players.map((p) => [p.player_id_dk, p] as const));
+  const byId = new Map(req.players.map((p) => [getId(p), p] as const));
   const eligibleBySlot: Record<Slot, MergedPlayer[]> = Object.fromEntries(
     slots.map((s) => [s, req.players.filter((p) => eligibleForSlot(p, s))])
   ) as any;
@@ -73,7 +80,7 @@ export function greedyRandom(
     let runningSalary = 0;
 
     for (const sl of slots) {
-      const pool = eligibleBySlot[sl].filter((p) => !used.has(p.player_id_dk) && withinTeamCap(teamCounts, p.team, maxPerTeam));
+      const pool = eligibleBySlot[sl].filter((p) => !used.has(getId(p)) && withinTeamCap(teamCounts, p.team, maxPerTeam));
       // prune by salary: keep only those that fit now
       const affordable = pool.filter((p) => runningSalary + p.salary <= salaryCap);
       const choice = pick(affordable.length > 0 ? affordable : pool, rng);
@@ -81,10 +88,10 @@ export function greedyRandom(
         ok = false;
         break;
       }
-      used.add(choice.player_id_dk);
+      used.add(getId(choice));
       teamCounts[choice.team] = (teamCounts[choice.team] ?? 0) + 1;
       runningSalary += choice.salary;
-      picked.push({ slot: sl, player_id_dk: choice.player_id_dk });
+      picked.push({ slot: sl, player_id_dk: getId(choice) });
       if (runningSalary > salaryCap) {
         ok = false;
         break;
@@ -127,4 +134,3 @@ export function greedyRandom(
     summary: { tried, valid, bestScore, elapsedMs: 0 },
   };
 }
-
