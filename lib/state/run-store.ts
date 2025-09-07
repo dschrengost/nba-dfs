@@ -131,10 +131,12 @@ export const useRunStore = create<State>((set, get) => ({
     const ownership_penalty = penaltyEnabled
       ? {
           enabled: true,
-          mode: penaltyCurve === "g_curve" ? "g_curve" : "by_points",
+          // Always use by_points for backend; express curve via curve_type
+          mode: "by_points",
           weight_lambda: Number(lambdaVal) || 0,
+          curve_type: penaltyCurve === "g_curve" ? "sigmoid" : "linear",
         }
-      : { enabled: false };
+      : { enabled: false } as const;
 
     const body: any = {
       site,
@@ -161,7 +163,21 @@ export const useRunStore = create<State>((set, get) => ({
         throw new Error(data?.error || `Request failed (${res.status})`);
       }
 
-      const lineups = data.lineups ?? [];
+      // Map backend lineups -> UI shape
+      const lineups = (Array.isArray(data.lineups) ? data.lineups : []).map((lu: any) => ({
+        id: String(lu.lineup_id ?? lu.id ?? Math.random().toString(36).slice(2)),
+        slots: (Array.isArray(lu.players) ? lu.players : []).map((pl: any) => ({
+          slot: pl.pos ?? pl.position ?? "UTIL",
+          player_id_dk: pl.dk_id ?? pl.player_id,
+          name: pl.name,
+          team: pl.team,
+          salary: pl.salary,
+          own_proj: pl.own_proj,
+          pos: pl.pos ?? pl.position,
+        })),
+        salary: Number(lu.total_salary ?? 0),
+        score: Number(lu.total_proj ?? 0),
+      }));
       set({
         status: "done",
         lineups,
@@ -171,7 +187,7 @@ export const useRunStore = create<State>((set, get) => ({
           tried: data.diagnostics?.N ?? data.summary?.tried ?? lineups.length,
           elapsedMs:
             data.summary?.elapsedMs ?? (data.diagnostics?.wall_time_sec ? Math.round(1000 * data.diagnostics.wall_time_sec) : 0),
-          bestScore: data.summary?.bestScore,
+          bestScore: data.summary?.bestScore ?? (lineups.reduce((m: number, l: any) => Math.max(m, Number(l.score || 0)), 0)),
           engineUsed: data.engineUsed ?? data.diagnostics?.engine,
           diagnostics: data.diagnostics,
         },

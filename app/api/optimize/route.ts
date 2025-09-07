@@ -16,6 +16,11 @@ export async function POST(req: NextRequest) {
       }
       // default mode if missing
       if (penIn.mode == null) penIn.mode = "by_points";
+      // Allow UI to pass a pseudo-mode "g_curve"; map to by_points + curve_type
+      if (penIn.mode === "g_curve") {
+        penIn.mode = "by_points";
+        if (penIn.curve_type == null) penIn.curve_type = "sigmoid";
+      }
       payload.constraints = { ...consIn, ownership_penalty: penIn };
     }
 
@@ -60,4 +65,3 @@ export async function POST(req: NextRequest) {
     return new Response(`Bad request: ${(e as Error).message}`, { status: 400 });
   }
 }
-

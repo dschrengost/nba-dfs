@@ -5,6 +5,18 @@ import { useRunStore } from "@/lib/state/run-store";
 export default function RunSummary() {
   const { summary } = useRunStore();
   if (!summary) return null;
+  const d: any = (summary as any).diagnostics || {};
+  const lamUsed =
+    d?.ownership_penalty?.lambda_used ??
+    d?.wiring_check?.objective?.lambda_ui ??
+    d?.ownership_penalty?.weight_lambda;
+  const curveLabel =
+    d?.ownership_penalty?.curve_type ||
+    d?.ownership_penalty?.curve ||
+    d?.ownership_penalty?.mode ||
+    undefined;
+  const dropPct =
+    (d?.constraints?.pruning?.drop_pct ?? d?.constraints_raw?.pruning?.drop_pct);
   return (
     <div className="text-sm">
       <div className="flex items-center gap-2">
@@ -17,6 +29,21 @@ export default function RunSummary() {
         {summary.usingFixtureDate ? (
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
             Fixture: {summary.usingFixtureDate}
+          </span>
+        ) : null}
+        {typeof lamUsed === "number" ? (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-400 border border-sky-500/30">
+            λ={lamUsed}
+          </span>
+        ) : null}
+        {curveLabel ? (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
+            curve={String(curveLabel)}
+          </span>
+        ) : null}
+        {typeof dropPct === "number" ? (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-fuchsia-500/15 text-fuchsia-400 border border-fuchsia-500/30">
+            drop={(dropPct * 100).toFixed(0)}%
           </span>
         ) : null}
       </div>

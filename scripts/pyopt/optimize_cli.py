@@ -343,6 +343,29 @@ def main() -> int:
         except Exception:
             diag_safe = diagnostics
 
+        # Augment diagnostics with constraint echo for UI tags
+        constraints_echo = None
+        try:
+            constraints_echo = cons.to_dict()  # type: ignore[attr-defined]
+        except Exception:
+            constraints_echo = None
+        # Include raw constraints as well (to carry nested pruning if present)
+        try:
+            diag_safe = diag_safe or {}
+            if isinstance(diag_safe, dict):
+                diag_safe["constraints"] = constraints_echo
+                diag_safe["constraints_raw"] = cons_in
+                # Ensure penalty snapshot includes curve_type and weight if available
+                pen = (constraints_echo or {}).get("ownership_penalty") if isinstance(constraints_echo, dict) else None
+                if pen:
+                    oe = diag_safe.setdefault("ownership_penalty", {})
+                    if "curve_type" not in oe and "curve_type" in pen:
+                        oe["curve_type"] = pen.get("curve_type")
+                    if "weight_lambda" not in oe and "weight_lambda" in pen:
+                        oe["weight_lambda"] = pen.get("weight_lambda")
+        except Exception:
+            pass
+
         out = {
             "ok": True,
             "engineUsed": engine,
@@ -353,6 +376,7 @@ def main() -> int:
                 "bestScore": max((lu["total_proj"] for lu in out_lineups), default=0.0),
                 "elapsedMs": elapsed_ms,
                 "invalidReasons": {"salary": 0, "slots": 0, "teamcap": 0, "dup": 0},
+                # Keep original constraints echo for UI convenience
                 "optionsUsed": cons_in,
               },
             "diagnostics": diag_safe,
