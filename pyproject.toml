@@ -11,6 +11,9 @@ dependencies = [
   "pydantic",
   "streamlit",
   "fastapi",
+  "numpy",
+  "pulp",
+  "ortools",
 ]
 
 # Development dependencies managed by uv dependency groups
