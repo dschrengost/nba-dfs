@@ -7,14 +7,15 @@ import type {
   Player,
   Projection,
 } from "@/lib/domain/types";
-import {
-  PlayerCsvSchema,
-  ProjectionCsvSchema,
-  PLAYER_ALIASES,
-  PROJ_ALIASES,
-} from "@/lib/ingest/schemas";
+import { PlayerCsvSchema } from "@/lib/ingest/schemas";
 import { parseCsvStream } from "@/lib/ingest/parse";
-import { mergePlayers, normalizePlayers, normalizeProjections } from "@/lib/ingest/normalize";
+import { mergePlayersStrict, normalizePlayers, normalizeProjections } from "@/lib/ingest/normalize";
+import {
+  parseDkPlayers,
+  parseDkProjections,
+  buildCanonicalProjectionsFromDk,
+  type DkProjection,
+} from "@/lib/ingest/adapter";
 
 type Status = "idle" | "parsing" | "ready" | "error";
 
@@ -27,6 +28,7 @@ type State = {
   merged: MergedPlayer[];
   summary: IngestSummary | null;
   errors: IngestError[];
+  _pendingDkProjections: DkProjection[] | null;
   ingestCsv: (file: File) => Promise<void>;
   reset: () => void;
 };
@@ -56,53 +58,128 @@ export const useIngestStore = create<State>((set, get) => ({
   merged: [],
   summary: null,
   errors: [],
-  reset: () => set({ status: "idle", players: [], projections: [], merged: [], summary: null, errors: [] }),
+  _pendingDkProjections: null,
+  reset: () =>
+    set({
+      status: "idle",
+      players: [],
+      projections: [],
+      merged: [],
+      summary: null,
+      errors: [],
+      _pendingDkProjections: null,
+    }),
   ingestCsv: async (file: File) => {
     set({ status: "parsing" });
     const kind = guessKind(file);
 
     try {
       if (kind === "players") {
-        const rep = await parseCsvStream(file, PlayerCsvSchema, keyToLower(PLAYER_ALIASES));
-        const players = normalizePlayers(rep.rows);
+        // Prefer DK adapter for real DK files; fall back to canonical if needed
+        let players: Player[] = [];
+        let unknownCols: string[] = [];
+        let rowCount = 0;
+        let droppedRows = 0;
+        try {
+          const repDk = await parseDkPlayers(file);
+          players = normalizePlayers(repDk.rows);
+          rowCount = repDk.rowCount;
+          droppedRows = repDk.droppedRows;
+          unknownCols = repDk.unknownColumns;
+        } catch {
+          const rep = await parseCsvStream(file, PlayerCsvSchema, {} as any);
+          players = normalizePlayers(rep.rows);
+          rowCount = rep.rowCount;
+          droppedRows = rep.droppedRows;
+          unknownCols = rep.unknownColumns;
+        }
         const nextSummary = { ...(get().summary ?? initSummary()) };
-        nextSummary.rows_players = rep.rowCount;
-        nextSummary.dropped_players = rep.droppedRows;
-        nextSummary.unknown_cols_players = rep.unknownColumns;
-        const merged = mergePlayers(players, get().projections);
-        set({ players, merged, summary: nextSummary, status: "ready" });
+        nextSummary.rows_players = rowCount;
+        nextSummary.dropped_players = droppedRows;
+        nextSummary.unknown_cols_players = unknownCols;
+
+        // If projections already parsed DK-raw, adapt now
+        let projections = get().projections;
+        const pending = get()._pendingDkProjections;
+        if (pending && pending.length > 0) {
+          const res = buildCanonicalProjectionsFromDk(pending, players);
+          // If any unmatched remain, mark error
+          if (res.unmatched.length > 0) {
+            set({
+              status: "error",
+              errors: res.unmatched.map((r) => ({
+                file: "projections",
+                row: -1,
+                message: `Unmatched DK projection: ${r.name} ${r.team} ${r.position}`,
+              })),
+            });
+          }
+          projections = normalizeProjections(res.rows);
+        }
+
+        const strict = mergePlayersStrict(players, projections);
+        const status: Status = strict.ok ? "ready" : "error";
+        set({ players, projections, merged: strict.merged, summary: nextSummary, status, _pendingDkProjections: null });
       } else if (kind === "projections") {
-        const rep = await parseCsvStream(file, ProjectionCsvSchema, keyToLower(PROJ_ALIASES));
-        const projections = normalizeProjections(rep.rows);
+        // Parse DK raw projections first; then adapt once players are available
+        const repDk = await parseDkProjections(file);
         const nextSummary = { ...(get().summary ?? initSummary()) };
-        nextSummary.rows_projections = rep.rowCount;
-        nextSummary.dropped_projections = rep.droppedRows;
-        nextSummary.unknown_cols_projections = rep.unknownColumns;
-        const merged = mergePlayers(get().players, projections);
-        set({ projections, merged, summary: nextSummary, status: "ready" });
+        nextSummary.rows_projections = repDk.rowCount;
+        nextSummary.dropped_projections = repDk.droppedRows;
+        nextSummary.unknown_cols_projections = repDk.unknownColumns;
+
+        const players = get().players;
+        if (players.length > 0) {
+          const res = buildCanonicalProjectionsFromDk(repDk.rows, players);
+          if (res.unmatched.length > 0) {
+            set({
+              status: "error",
+              errors: res.unmatched.map((r) => ({
+                file: "projections",
+                row: -1,
+                message: `Unmatched DK projection: ${r.name} ${r.team} ${r.position}`,
+              })),
+            });
+          }
+          const projections = normalizeProjections(res.rows);
+          const strict = mergePlayersStrict(players, projections);
+          const status: Status = strict.ok ? "ready" : "error";
+          set({ projections, merged: strict.merged, summary: nextSummary, status, _pendingDkProjections: null });
+        } else {
+          // wait for players to be ingested
+          set({ _pendingDkProjections: repDk.rows, summary: nextSummary, status: "ready" });
+        }
       } else {
         // Fallback: try projections first then players
+        // try DK projections first
         try {
-          const repP = await parseCsvStream(file, ProjectionCsvSchema, keyToLower(PROJ_ALIASES));
-          if (repP.rows.length > 0) {
-            const projections = normalizeProjections(repP.rows);
-            const nextSummary = { ...(get().summary ?? initSummary()) };
-            nextSummary.rows_projections = repP.rowCount;
-            nextSummary.dropped_projections = repP.droppedRows;
-            nextSummary.unknown_cols_projections = repP.unknownColumns;
-            const merged = mergePlayers(get().players, projections);
-            set({ projections, merged, summary: nextSummary, status: "ready" });
+          const repP = await parseDkProjections(file);
+          const nextSummary = { ...(get().summary ?? initSummary()) };
+          nextSummary.rows_projections = repP.rowCount;
+          nextSummary.dropped_projections = repP.droppedRows;
+          nextSummary.unknown_cols_projections = repP.unknownColumns;
+          const players = get().players;
+          if (players.length > 0) {
+            const res = buildCanonicalProjectionsFromDk(repP.rows, players);
+            const projections = normalizeProjections(res.rows);
+            const strict = mergePlayersStrict(players, projections);
+            const status: Status = strict.ok ? "ready" : "error";
+            set({ projections, merged: strict.merged, summary: nextSummary, status });
             return;
           }
+          set({ _pendingDkProjections: repP.rows, summary: nextSummary, status: "ready" });
+          return;
         } catch {}
-        const repPl = await parseCsvStream(file, PlayerCsvSchema, keyToLower(PLAYER_ALIASES));
+        // finally, try players
+        const repPl = await parseDkPlayers(file);
         const players = normalizePlayers(repPl.rows);
         const nextSummary = { ...(get().summary ?? initSummary()) };
         nextSummary.rows_players = repPl.rowCount;
         nextSummary.dropped_players = repPl.droppedRows;
         nextSummary.unknown_cols_players = repPl.unknownColumns;
-        const merged = mergePlayers(players, get().projections);
-        set({ players, merged, summary: nextSummary, status: "ready" });
+        const strict = mergePlayersStrict(players, get().projections);
+        const status: Status = strict.ok ? "ready" : "error";
+        set({ players, merged: strict.merged, summary: nextSummary, status });
       }
     } catch (e: any) {
       set((s) => ({
@@ -118,4 +195,3 @@ function keyToLower<T extends Record<string, any>>(obj: T): T {
   for (const [k, v] of Object.entries(obj)) out[k.toLowerCase()] = v;
   return out as T;
 }
-
