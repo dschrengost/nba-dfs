@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "./button";
+import { useRunStore } from "@/lib/state/run-store";
 import type { GridMode } from "./LineupGridPlaceholder";
 
 export default function ControlsBar({
@@ -10,6 +11,7 @@ export default function ControlsBar({
   gridMode?: GridMode;
   onGridModeChange?: (m: GridMode) => void;
 }) {
+  const { status, run, reset } = useRunStore();
   const showDev = process.env.NODE_ENV !== "production" && onGridModeChange;
   return (
     <div className="h-[96px] w-full border-t border-border px-4 flex items-center justify-between bg-background">
@@ -39,8 +41,8 @@ export default function ControlsBar({
         <div />
       )}
       <div className="flex gap-2">
-        <Button disabled>Run</Button>
-        <Button variant="outline" disabled>
+        <Button onClick={() => run()} disabled={status === "running"}>Run</Button>
+        <Button variant="outline" onClick={() => reset()} disabled={status === "running"}>
           Reset
         </Button>
       </div>
