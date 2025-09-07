@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 
 import type { OptimizationRequest, WorkerMessageIn, WorkerMessageOut } from "@/lib/opt/types";
+import { greedyRandom } from "@/lib/opt/algorithms/greedy";
 
 let cancelled = false;
 
@@ -9,9 +10,11 @@ function post(msg: WorkerMessageOut) {
   postMessage(msg);
 }
 
-async function runOptimization(_req: OptimizationRequest) {
-  // Placeholder; actual algorithm wired in T3
-  return { lineups: [], summary: { tried: 0, valid: 0, bestScore: 0, elapsedMs: 0 } };
+async function runOptimization(req: OptimizationRequest) {
+  return greedyRandom(req, (tried, valid) => {
+    if (cancelled) return;
+    post({ type: "progress", tried, valid });
+  });
 }
 
 // Message handler
@@ -38,4 +41,3 @@ self.onmessage = async (e: MessageEvent<WorkerMessageIn>) => {
 };
 
 export {}; // keep this a module
-
