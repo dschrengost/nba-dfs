@@ -5,8 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Development Commands
 
 ### Environment Setup
-- **Package management**: Use `uv sync` (includes dev dependencies with `--extra dev`)
+- **Python package management**: Use `uv sync` (includes dev dependencies with `--extra dev`)
 - **Development dependencies**: `uv sync --extra dev`
+- **Node.js dependencies**: `npm install`
 
 ### Code Quality & Testing
 - **Format code**: `black .`

@@ -27,6 +27,8 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 import pandas as pd
+from collections import Counter
+from itertools import combinations
 
 
 def _stderr(msg: str) -> None:
@@ -326,6 +328,45 @@ def main() -> int:
             for lu in (lineups or [])
         ]
 
+        # --- Pool metrics for diagnostics -------------------------------------------------
+        def _pool_metrics(out_lineups_json):
+            """Compute quick diversity metrics & exposures for the returned lineups."""
+            try:
+                lineups_list = out_lineups_json or []
+                # Prefer dk_id, fallback to player_id
+                lid_lists = [
+                    [(p.get("dk_id") or p.get("player_id")) for p in lu.get("players", [])]
+                    for lu in lineups_list
+                ]
+                # Filter out Nones defensively
+                lid_lists = [[x for x in lst if x is not None] for lst in lid_lists]
+                sets = [set(lst) for lst in lid_lists if lst]
+                # Pairwise overlap / Jaccard
+                pairs = list(combinations(sets, 2))
+                overlaps = [(len(a & b)) for a, b in pairs] if pairs else []
+                jaccards = [(len(a & b) / max(1, len(a | b))) for a, b in pairs] if pairs else []
+                # Exposures by player id
+                counts = Counter([pid for lst in lid_lists for pid in lst])
+                n_lineups = len(lid_lists) or 1
+                exposures = {pid: c / n_lineups for pid, c in counts.items()}
+                return {
+                    "lineups": len(lid_lists),
+                    "avg_overlap_players": (sum(overlaps) / len(overlaps)) if overlaps else 0.0,
+                    "avg_pairwise_jaccard": (sum(jaccards) / len(jaccards)) if jaccards else 0.0,
+                    "unique_player_count": len(set().union(*sets)) if sets else 0,
+                    "exposures": exposures,
+                }
+            except Exception:
+                return {
+                    "lineups": 0,
+                    "avg_overlap_players": 0.0,
+                    "avg_pairwise_jaccard": 0.0,
+                    "unique_player_count": 0,
+                    "exposures": {},
+                }
+
+        pool_diag = _pool_metrics(out_lineups)
+
         # Helper: scrub JSON for non-finite numbers (Infinity/NaN) so JS JSON.parse succeeds
         import math
         def _clean_nans(obj):
@@ -363,6 +404,14 @@ def main() -> int:
                         oe["curve_type"] = pen.get("curve_type")
                     if "weight_lambda" not in oe and "weight_lambda" in pen:
                         oe["weight_lambda"] = pen.get("weight_lambda")
+        except Exception:
+            pass
+
+        # Attach pool diagnostics
+        try:
+            diag_safe = diag_safe or {}
+            if isinstance(diag_safe, dict):
+                diag_safe["pool"] = pool_diag
         except Exception:
             pass
 
