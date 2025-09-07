@@ -8,3 +8,7 @@ Data pipeline and tools for NBA Daily Fantasy Sports.
 - `app/` — unified dash
 - `data/` — parquet store (ignored from git)
 - `docs/` — design notes, schemas, PRPs
+
+## Optimizer QA (fixtures)
+- Generate merged snapshot from DK CSVs: `node scripts/make-fixture-snapshot.mjs 2024-01-15`
+- Run headless greedy sampler: `node scripts/qa-opt-fixture.mjs 2024-01-15`
