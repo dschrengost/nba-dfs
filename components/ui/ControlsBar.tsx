@@ -7,6 +7,8 @@ import type { GridMode } from "./LineupGridPlaceholder";
 import { Input } from "./input";
 import { Slider } from "./slider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./collapsible";
+import { ChevronDown } from "lucide-react";
 
 export default function ControlsBar({
   gridMode,
@@ -92,51 +94,147 @@ export default function ControlsBar({
             max={150}
           />
         </div>
-        <div>
-          <div className="flex items-center justify-between">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <label className="block text-[11px] opacity-70 mb-1 cursor-help">Sigma (0–0.25)</label>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Randomness applied to projections. 0 = deterministic; 0.25 = high variance.</p>
-              </TooltipContent>
-            </Tooltip>
-            <div className="text-[11px] opacity-70 ml-2">{sigma.toFixed(3)}</div>
-          </div>
-          <Slider
-            value={[Math.max(0, Math.min(0.25, sigma))]}
-            min={0}
-            max={0.25}
-            step={0.005}
-            onValueChange={(v) => setSigma(v?.[0] ?? 0)}
-            className="mt-1"
-            data-testid="sigma-slider"
-            aria-label="Sigma"
-          />
-        </div>
-        <div>
-          <div className="flex items-center justify-between">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <label className="block text-[11px] opacity-70 mb-1 cursor-help">Drop intensity (0–0.5)</label>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Prunes low-projection players to speed up search. 0 = keep all; 0.5 = aggressive pruning.</p>
-              </TooltipContent>
-            </Tooltip>
-            <div className="text-[11px] opacity-70 ml-2">{dropIntensity.toFixed(3)}</div>
-          </div>
-          <Slider
-            value={[Math.max(0, Math.min(0.5, dropIntensity))]}
-            min={0}
-            max={0.5}
-            step={0.01}
-            onValueChange={(v) => setDropIntensity(v?.[0] ?? 0)}
-            className="mt-1"
-            data-testid="drop-slider"
-            aria-label="Drop intensity"
-          />
+        {/* Advanced settings collapsible */}
+        <div className="col-span-2 md:col-span-3 lg:col-span-6">
+          <Collapsible>
+            <div className="flex items-center justify-between">
+              <div className="text-xs opacity-80">Advanced Settings</div>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 px-2">
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+            <CollapsibleContent>
+              <div className="mt-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 items-end">
+                {/* Sigma slider */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <label className="block text-[11px] opacity-70 mb-1 cursor-help">Sigma (0–0.25)</label>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Randomness applied to projections. 0 = deterministic; 0.25 = high variance.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <div className="text-[11px] opacity-70 ml-2">{sigma.toFixed(3)}</div>
+                  </div>
+                  <Slider
+                    value={[Math.max(0, Math.min(0.25, sigma))]}
+                    min={0}
+                    max={0.25}
+                    step={0.005}
+                    onValueChange={(v) => setSigma(v?.[0] ?? 0)}
+                    className="mt-1"
+                    data-testid="sigma-slider"
+                    aria-label="Sigma"
+                  />
+                </div>
+                {/* Drop slider */}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <label className="block text-[11px] opacity-70 mb-1 cursor-help">Drop intensity (0–0.5)</label>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Prunes low-projection players to speed up search. 0 = keep all; 0.5 = aggressive pruning.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <div className="text-[11px] opacity-70 ml-2">{dropIntensity.toFixed(3)}</div>
+                  </div>
+                  <Slider
+                    value={[Math.max(0, Math.min(0.5, dropIntensity))]}
+                    min={0}
+                    max={0.5}
+                    step={0.01}
+                    onValueChange={(v) => setDropIntensity(v?.[0] ?? 0)}
+                    className="mt-1"
+                    data-testid="drop-slider"
+                    aria-label="Drop intensity"
+                  />
+                </div>
+
+                {/* Ownership penalty controls */}
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    id="ownershipPenalty"
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={Boolean(penaltyEnabled)}
+                    onChange={(e) => setPenaltyEnabled(e.target.checked)}
+                  />
+                  <label htmlFor="ownershipPenalty" className="text-xs opacity-80 select-none">
+                    Ownership penalty
+                  </label>
+                </div>
+                {penaltyEnabled && (
+                  <>
+                    <div>
+                      <label className="block text-[11px] opacity-70 mb-1">Lambda (0-50)</label>
+                      <Input
+                        type="number"
+                        value={Number(lambdaVal)}
+                        onChange={(e) => setLambdaVal(Math.max(0, Math.min(50, Number(e.target.value || 0))))}
+                        min={0}
+                        max={50}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] opacity-70 mb-1">Penalty curve</label>
+                      <select
+                        className="h-9 w-full bg-background border border-input rounded px-2 text-sm"
+                        value={penaltyCurve}
+                        onChange={(e) => setPenaltyCurve((e.target.value as any) === "g_curve" ? "g_curve" : "linear")}
+                      >
+                        <option value="linear">Linear</option>
+                        <option value="g_curve">G-curve</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {/* Legacy options grouped in Advanced */}
+                <div>
+                  <label className="block text-[11px] opacity-70 mb-1">Candidates</label>
+                  <Input
+                    type="number"
+                    value={Number(options.candidates ?? 0)}
+                    onChange={(e) => setOptions({ candidates: Math.max(0, Number(e.target.value || 0)) })}
+                    min={0}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] opacity-70 mb-1">Team cap</label>
+                  <Input
+                    type="number"
+                    value={Number(options.teamCap ?? 0)}
+                    onChange={(e) => setOptions({ teamCap: Math.max(0, Number(e.target.value || 0)) })}
+                    min={0}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] opacity-70 mb-1">Salary cap</label>
+                  <Input
+                    type="number"
+                    value={Number(options.salaryCap ?? 0)}
+                    onChange={(e) => setOptions({ salaryCap: Math.max(0, Number(e.target.value || 0)) })}
+                    min={0}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] opacity-70 mb-1">Min salary</label>
+                  <Input
+                    type="number"
+                    value={Number(options.minSalary ?? 0)}
+                    onChange={(e) => setOptions({ minSalary: Math.max(0, Number(e.target.value || 0)) })}
+                    min={0}
+                  />
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
         <div className="flex items-center gap-2 mt-1">
           <input
@@ -189,44 +287,6 @@ export default function ControlsBar({
             value={playerIdsPath}
             onChange={(e) => setPlayerIdsPath(e.target.value)}
             placeholder="tests/fixtures/dk/2024-01-15/player_ids.csv"
-          />
-        </div>
-
-        {/* Legacy options (kept for dev) */}
-        <div>
-          <label className="block text-[11px] opacity-70 mb-1">Candidates</label>
-          <Input
-            type="number"
-            value={Number(options.candidates ?? 0)}
-            onChange={(e) => setOptions({ candidates: Math.max(0, Number(e.target.value || 0)) })}
-            min={0}
-          />
-        </div>
-        <div>
-          <label className="block text-[11px] opacity-70 mb-1">Team cap</label>
-          <Input
-            type="number"
-            value={Number(options.teamCap ?? 0)}
-            onChange={(e) => setOptions({ teamCap: Math.max(0, Number(e.target.value || 0)) })}
-            min={0}
-          />
-        </div>
-        <div>
-          <label className="block text-[11px] opacity-70 mb-1">Salary cap</label>
-          <Input
-            type="number"
-            value={Number(options.salaryCap ?? 0)}
-            onChange={(e) => setOptions({ salaryCap: Math.max(0, Number(e.target.value || 0)) })}
-            min={0}
-          />
-        </div>
-        <div>
-          <label className="block text-[11px] opacity-70 mb-1">Min salary</label>
-          <Input
-            type="number"
-            value={Number(options.minSalary ?? 0)}
-            onChange={(e) => setOptions({ minSalary: Math.max(0, Number(e.target.value || 0)) })}
-            min={0}
           />
         </div>
       </div>
