@@ -11,7 +11,7 @@ export type ParseReport<T> = {
 
 // Streaming CSV parser with header aliasing + row validation
 export function parseCsvStream<T extends z.ZodRawShape>(
-  file: File,
+  file: File | Blob | string,
   schema: z.ZodObject<T>,
   aliases: Record<string, keyof z.infer<z.ZodObject<T>>>
 ): Promise<ParseReport<z.infer<typeof schema>>> {
@@ -71,4 +71,3 @@ export function parseCsvStream<T extends z.ZodRawShape>(
     });
   });
 }
-
