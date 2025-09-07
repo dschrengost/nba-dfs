@@ -1,0 +1,7 @@
+{
+  "/page": "app/page.js",
+  "/(studio)/optimizer/page": "app/(studio)/optimizer/page.js",
+  "/(studio)/variants/page": "app/(studio)/variants/page.js",
+  "/(studio)/field/page": "app/(studio)/field/page.js",
+  "/(studio)/simulator/page": "app/(studio)/simulator/page.js"
+}

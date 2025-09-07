@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export const metadata = {
   title: "NBA-DFS",
   description: "UI Shell for NBA-DFS tools",
@@ -11,9 +13,7 @@ import { Separator } from "../components/ui/separator";
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+}: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className="min-h-screen bg-background text-foreground">
