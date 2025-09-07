@@ -3,7 +3,8 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
-    "start": "next start -p 3000"
+    "start": "next start -p 3000",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@types/node": "24.3.1",
