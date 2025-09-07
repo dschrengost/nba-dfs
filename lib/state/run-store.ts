@@ -138,6 +138,10 @@ export const useRunStore = create<State>((set, get) => ({
         }
       : { enabled: false } as const;
 
+    // Inline players fallback from ingest store when paths are not provided
+    const merged = useIngestStore.getState().merged || [];
+    const useInlinePlayers = (!projectionsPath || String(projectionsPath).trim() === "") && merged.length > 0;
+
     const body: any = {
       site,
       enginePreferred: "cp_sat",
@@ -151,6 +155,17 @@ export const useRunStore = create<State>((set, get) => ({
       projectionsPath,
       playerIdsPath,
     };
+    if (useInlinePlayers) {
+      body.players = merged.map((p: any) => ({
+        name: p.player_name,
+        team: p.team,
+        position: [p.pos_primary, p.pos_secondary].filter(Boolean).join("/"),
+        salary: p.salary,
+        proj_fp: p.proj_fp,
+        own_proj: p.ownership ?? null,
+        dk_id: p.player_id_dk,
+      }));
+    }
 
     try {
       const res = await fetch("/api/optimize", {
