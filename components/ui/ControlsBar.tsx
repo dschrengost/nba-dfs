@@ -24,6 +24,7 @@ export default function ControlsBar({
   const [dropIntensity, setDropIntensity] = useState<number>(0.2);
   const [seed, setSeed] = useState<number>(Number(options.seed) || 42);
   const [sigma, setSigma] = useState<number>(0.07);
+  const [minUniques, setMinUniques] = useState<number>(1);
   const [projectionsPath, setProjectionsPath] = useState<string>("");
   const [playerIdsPath, setPlayerIdsPath] = useState<string>("");
 
@@ -47,6 +48,7 @@ export default function ControlsBar({
       projectionsPath,
       playerIdsPath,
       nLineups,
+      minUniques,
       penaltyEnabled,
       lambdaVal,
       penaltyCurve,
@@ -65,6 +67,16 @@ export default function ControlsBar({
             value={String(seed)}
             onChange={(e) => setSeed(Number(e.target.value || 0))}
             placeholder="seed"
+          />
+        </div>
+        <div>
+          <label className="block text-[11px] opacity-70 mb-1">Min uniques (0-5)</label>
+          <Input
+            type="number"
+            value={Number(minUniques)}
+            onChange={(e) => setMinUniques(Math.max(0, Math.min(5, Number(e.target.value || 0))))}
+            min={0}
+            max={5}
           />
         </div>
         <div>

@@ -17,6 +17,10 @@ export default function RunSummary() {
     undefined;
   const dropPct =
     (d?.constraints?.pruning?.drop_pct ?? d?.constraints_raw?.pruning?.drop_pct);
+  const uniques =
+    d?.constraints?.unique_players ??
+    d?.constraints_raw?.unique_players ??
+    (summary as any)?.optionsUsed?.unique_players;
   return (
     <div className="text-sm">
       <div className="flex items-center gap-2">
@@ -44,6 +48,11 @@ export default function RunSummary() {
         {typeof dropPct === "number" ? (
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-fuchsia-500/15 text-fuchsia-400 border border-fuchsia-500/30">
             drop={(dropPct * 100).toFixed(0)}%
+          </span>
+        ) : null}
+        {typeof uniques === "number" ? (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-400 border border-teal-500/30">
+            uniques={uniques}
           </span>
         ) : null}
       </div>

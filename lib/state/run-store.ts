@@ -34,6 +34,7 @@ type State = {
     projectionsPath: string;
     playerIdsPath?: string;
     nLineups: number;
+    minUniques?: number;
     penaltyEnabled: boolean;
     lambdaVal?: number;
     penaltyCurve?: "linear" | "g_curve";
@@ -118,6 +119,7 @@ export const useRunStore = create<State>((set, get) => ({
       projectionsPath,
       playerIdsPath,
       nLineups,
+      minUniques = 1,
       penaltyEnabled,
       lambdaVal = 0,
       penaltyCurve = "linear",
@@ -147,6 +149,7 @@ export const useRunStore = create<State>((set, get) => ({
       enginePreferred: "cp_sat",
       constraints: {
         N_lineups: Math.max(1, Number(nLineups) || 5),
+        unique_players: Math.max(0, Math.min(5, Number(minUniques) || 0)),
         ownership_penalty,
         pruning: { drop_pct: Math.max(0, Math.min(0.5, Number(dropIntensity) || 0)) },
         randomness_pct: Math.round((Number(sigma) || 0) * 100),
