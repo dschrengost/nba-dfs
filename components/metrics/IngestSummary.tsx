@@ -1,10 +1,10 @@
 "use client";
 
 import { useIngestStore } from "@/lib/state/ingest-store";
-import { shallow } from "zustand/shallow";
 
 export default function IngestSummary() {
-  const { summary, merged } = useIngestStore((s) => ({ summary: s.summary, merged: s.merged }), shallow);
+  const summary = useIngestStore((s) => s.summary);
+  const merged = useIngestStore((s) => s.merged);
 
   if (!summary) return (
     <div className="text-sm text-muted-foreground" aria-live="polite">
