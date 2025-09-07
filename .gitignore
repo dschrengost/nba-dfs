@@ -21,4 +21,4 @@ yarn-error.log*
 .env
 
 # ---- Docs you don't want in repo (adjust as needed) ----
-docs/PRPs/*.md
+docs/PRPs/*.mdPR_BODY.md
