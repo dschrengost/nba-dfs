@@ -1,0 +1,43 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/runs_registry.schema.yaml"
+title: "Runs Registry"
+description: "Registry of runs and their primary outputs."
+version: "0.2.0"
+type: object
+additionalProperties: false
+properties:
+  run_id:
+    $ref: "./common.types.yaml#/definitions/RunId"
+  run_type:
+    $ref: "./common.types.yaml#/definitions/RunTypeEnum"
+  slate_id:
+    $ref: "./common.types.yaml#/definitions/SlateId"
+  status:
+    type: string
+    enum: [success, failed, running, unknown]
+  primary_outputs:
+    type: array
+    items: { type: string }
+  metrics_path:
+    type: string
+  created_ts:
+    $ref: "./common.types.yaml#/definitions/UtcTimestamp"
+  tags:
+    type: array
+    items: { type: string }
+required: [run_id, run_type, slate_id, status, created_ts]
+examples:
+  - run_id: "20251101_180000_deadbee"
+    run_type: "ingest"
+    slate_id: "20251101_NBA"
+    status: "success"
+    primary_outputs: ["runs/25-11-01_180000/optimizer/artifacts/lineups.parquet"]
+    metrics_path: "runs/25-11-01_180000/optimizer/artifacts/metrics.json"
+    created_ts: "2025-11-01T18:00:00.000Z"
+    tags: ["main"]
+  - # invalid: status not in enum
+    run_id: "20251101_180000_deadbee"
+    run_type: "optimizer"
+    slate_id: "20251101_NBA"
+    status: "done"
+    created_ts: "2025-11-01T18:00:00.000Z"

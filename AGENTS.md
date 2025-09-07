@@ -1,0 +1,141 @@
+# AGENTS.md — NBA-DFS
+
+## 1) Purpose & Scope
+Define how our coding agent works in this repo: rules, structure, contracts, CI gates, and safety rails so contributions are deterministic, reproducible, and clean.
+
+## 2) Core Principles
+- **Determinism & Repro**: Every run is seed‑controlled and artifacted.
+- **Repo hygiene**: Single source of truth in `src/`; no ad‑hoc scripts.
+- **Small, reviewed changes**: Prefer narrow PRs with PRP when crossing modules.
+- **Data contracts first**: Schemas and IO adapters are versioned and tested.
+- **Idempotent tooling**: Re-running the same inputs + seed yields same outputs.
+
+## 3) Repo Layout (monorepo)
+```
+/src
+/data/
+  raw/          # user uploads (read-only to agent)
+  external/
+  interim/
+  processed/
+/runs/          # run registry; immutable by agent
+  YYMMDD_HHMMSS/<stage>/...
+/configs/       # defaults.yaml (tracked) + local.yaml (gitignored)
+/tests/
+/docs/
+/ui/            # future
+```
+> Agent: Do not create new top-level dirs without a PRP.
+
+## 4) Tech Stack & Versions
+- **Python**: “latest on dev box”. Treat as **runtime >= current local**; avoid 3.13-only features unless required.
+- **Env & deps**: Use **UV** for env + locking.
+- **Format/Lint/Type**: `ruff`, `black`, `mypy`.
+- **Typing level**: **TBD** (owner to decide). Default: strict in `src/` for new modules; best‑effort elsewhere.
+
+## 5) Data Pipeline Contracts
+### Inputs (user uploads)
+- `projections.csv`, `player_ids.csv` are required at start of slate.
+- Any source → normalize to **house schema** before downstream use.
+
+### House schemas (minimum)
+**Players** (`player_ids.csv` normalized → `processed/players.parquet`)
+```
+player_id_dk (str, unique per slate)
+player_name (str)
+team (str, 3‑letter)
+pos_primary (str)   # DK compliant
+pos_secondary (str|nullable)
+```
+**Projections** (`projections.csv` normalized → `processed/projections.parquet`)
+```
+player_id_dk (str, FK → players)
+salary (int)
+proj_fp (float)
+mins (float|nullable)
+ownership (float|nullable)
+ceiling (float|nullable)
+floor (float|nullable)
+source (str)        # original feed/source
+version_ts (ts)     # when this file was produced (if known)
+```
+Rules:
+- Latest normalized projections per slate become the canonical pointer: `data/processed/current/projections.parquet` (symlink or copy). All runs reference this pointer.
+- Player IDs **must persist across the entire pipeline**; modules may omit printing them, but IDs must be carried in data frames and artifacts.
+
+## 6) Slate & Keys
+- **SLATE_KEY format**: `YY-MM-DD_HHMMSS` (local tz America/New_York).
+  - Example: `25-09-04_171500`.
+- Every artifact, cache entry, and run lives under its slate key or references it.
+
+## 7) Run Registry & Artifacts
+Each run directory must include:
+- `run_meta.json`: module name, config blob, `seed`, `slate_key`, timestamps.
+- `inputs_hash.json`: content hashes of inputs + schema versions.
+- `artifacts/`: lineups, metrics, logs (CSV/Parquet + JSON).
+- `tag.txt` (optional): freeform user label.
+Retention: **Prune non‑tagged runs after N days (TBD)**.
+
+## 8) Config & Secrets
+- Tracked defaults in `/configs/defaults.yaml`.
+- Local overrides in `/configs/local.yaml` (**gitignored**).
+- `.env.example` tracks names; `.env` is **gitignored**. (No third‑party keys now.)
+
+## 9) Testing & CI
+- **Unit**: schema validators, IO adapters, simple E2E smoke of pipeline.
+- **CI gates (blocking)**: `uv sync` → `ruff` → `black --check` → `mypy` → `pytest -q`.
+- New/changed schemas require tests in `tests/schemas/`.
+
+## 10) Branching & PR Rules
+- Branches: `main` (protected), `dev` (integration), feature `feat/<slug>`.
+- PRs only; no direct commits to `main`.
+- PR template must include:
+  - Scope & impacted modules
+  - Data contracts changed? (Y/N + migration note)
+  - Seeds honored? Determinism verified?
+  - Checkboxes: UV sync, lint/format/type/tests passed
+  - Rollback plan
+
+## 11) Agent Operating Rules
+- **Allowed to edit**: `src/**`, `tests/**`, `configs/**`, `docs/**`.
+- **Read‑only**: `data/**`, `runs/**`. (Agent must not write here.)
+- **No schema drift**: Any contract change needs PRP + tests.
+- **Change size**: If touching multiple modules or >30 LOC → require PRP; otherwise small fixes allowed.
+- **Commit style**: Conventional commits (`feat:`, `fix:`, `refactor:`, `docs:`…).
+
+### Review checklist (agent pre‑PR)
+- Paths limited to allowed areas
+- Seeds are thread through new functions
+- IO adapters validate & log row counts/nulls/dupes
+- Artifacts include `player_id_dk` unless explicitly trimmed
+- CI passes locally
+
+## 12) Performance & Determinism
+- Every stochastic step **accepts `seed`** and records it in `run_meta.json`.
+- Prefer pure functions with explicit inputs/outputs.
+- Disk cache allowed in `data/processed/cache/<slate_key>/<adapter>@<version>/` keyed by `(source, version_ts, schema_version)`.
+
+## 13) Observability & Metrics
+Log to `artifacts/metrics.json` (per run):
+- row_counts, null_rates, dupe_rates
+- player_id coverage, salary coverage, pos validity
+- wall_time, memory_peak (if available)
+- **legacy_metrics**: optional block for metrics from prior endeavor (carry‑over integration point).
+
+## 14) Safety Rails
+- Block any write under `data/raw/` or `runs/` **without a slate key** (✓ enforced).
+- No force‑push to `main`. Direct commits to `main` blocked unless owner explicitly requests.
+- Never embed secrets in code/pr.
+- Don’t create new external dependencies without PR note + lockfile update.
+
+## 15) House Processes
+- **Projections precedence**: most recent normalized file is canonical.
+- **IDs persistence**: DK IDs must propagate through optimizer → variant builder → field sampler → simulator.
+- **Timestamps everywhere**: files, rows (where relevant), and run dirs.
+
+---
+
+### Open TBDs (owner to fill)
+- Typing strictness policy (global or per‑module)
+- Run pruning policy (days) and retention exceptions
+- Exact set of legacy metrics to port

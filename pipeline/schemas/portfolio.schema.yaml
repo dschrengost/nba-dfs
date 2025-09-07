@@ -1,0 +1,25 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/portfolio.schema.yaml"
+title: "Portfolio Summary"
+description: "Optional portfolio-level summary schema (not yet used by tests)."
+version: "0.1.0"
+type: object
+additionalProperties: false
+properties:
+  run_id:
+    $ref: "./common.types.yaml#/definitions/RunId"
+  summary:
+    type: object
+    additionalProperties: false
+    properties:
+      n_entrants: { type: number, minimum: 0 }
+      n_worlds: { type: number, minimum: 0 }
+      total_prize: { type: number, minimum: 0 }
+required: [run_id]
+examples:
+  - run_id: "20251101_180000_deadbee"
+    summary:
+      n_entrants: 100
+      n_worlds: 10000
+      total_prize: 150000
+

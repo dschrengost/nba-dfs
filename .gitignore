@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Python cache
+__pycache__/
+*.py[cod]
+docs/PRPs/*.md
+.env
+node_modules

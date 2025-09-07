@@ -1,6 +1,7 @@
 [project]
 name = "nba-dfs"
 version = "0.1.0"
+requires-python = ">=3.11,<3.12"
 description = "NBA DFS pipeline"
 authors = [{ name="Daniel Schrengost" }]
 dependencies = [
@@ -9,4 +10,127 @@ dependencies = [
   "pyarrow",
   "pydantic",
   "streamlit",
+  "fastapi",
 ]
+
+# Development dependencies managed by uv dependency groups
+[dependency-groups]
+dev = [
+  "ruff>=0.6.9",
+  "black>=24.8.0",
+  "mypy>=1.11.2",
+  "pytest>=8.3.2",
+  "pytest-cov>=5.0.0",
+  "trio>=0.25.0",
+  # Lint/validate schemas used by PRP-0 (optional but recommended)
+  "yamllint>=1.35.1",
+  "jsonschema>=4.23.0",
+  "pyyaml>=6.0.2",
+  "types-PyYAML>=6.0.12.20240917",
+  "httpx>=0.27,<0.28",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+# Mirror dev tools as an extra for compatibility with `uv sync --extra dev`
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.6.9",
+  "black>=24.8.0",
+  "mypy>=1.11.2",
+  "pytest>=8.3.2",
+  "pytest-cov>=5.0.0",
+  "trio>=0.25.0",
+  "yamllint>=1.35.1",
+  "jsonschema>=4.23.0",
+  "pyyaml>=6.0.2",
+  "types-PyYAML>=6.0.12.20240917",
+  "httpx>=0.27,<0.28",
+]
+
+
+[tool.black]
+line-length = 88
+target-version = ["py310", "py311", "py312"]
+extend-exclude = '''
+(
+  processes/optimizer/_legacy/
+  | frontend/
+  | app/streamlit/
+)
+'''
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+extend-exclude = ["processes/optimizer/_legacy", "frontend", "app/streamlit", "processes/variants/_legacy", "processes/field_sampler/_legacy"]
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "I",   # isort (import sorting)
+  "B",   # flake8-bugbear
+  "UP",  # pyupgrade
+]
+ignore = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["pipeline", "processes", "app"]
+
+
+[tool.mypy]
+python_version = "3.11"
+plugins = ["pydantic.mypy"]
+strict = true
+pretty = true
+show_error_codes = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_return_any = true
+disallow_subclassing_any = true
+disallow_any_generics = true
+no_implicit_optional = true
+# Keep this for other 3rd-party libs, but don't let it affect pydantic:
+ignore_missing_imports = true
+follow_imports = "skip"
+# Let mypy check all our process modules by default (include API):
+files = ["processes/**/*.py"]
+exclude = "(?x)(^processes/optimizer/_legacy/|^frontend/|^app/streamlit/)"
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+check_untyped_defs = false
+warn_unused_ignores = false
+warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = [
+  "processes.optimizer._legacy",
+  "processes.optimizer._legacy.*",
+]
+ignore_errors = true
+
+# IMPORTANT: ensure pydantic isn't ignored
+
+[[tool.mypy.overrides]]
+module = ["pydantic", "pydantic.*"]
+ignore_missing_imports = false
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true
+
+[[tool.mypy.overrides]]
+module = [
+  "processes.api.models",
+]
+disallow_subclassing_any = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

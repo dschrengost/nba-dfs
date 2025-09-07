@@ -1,0 +1,51 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/contest_structure.schema.yaml"
+title: "Contest Structure"
+description: "Contest metadata including payout structure and economics. Payout ranges must be contiguous, non-overlapping, and exhaustive so that the total covered ranks equals field_size (validated in higher-level checks)."
+version: "0.1.0"
+type: object
+additionalProperties: false
+properties:
+  contest_id:
+    type: string
+  name:
+    type: string
+  field_size:
+    type: integer
+    minimum: 1
+  payout_curve:
+    type: array
+    description: "Non-overlapping contiguous ranges; sum of ranks equals field_size (enforce in validator)."
+    items:
+      type: object
+      additionalProperties: false
+      properties:
+        rank_start: { type: integer, minimum: 1 }
+        rank_end: { type: integer, minimum: 1 }
+        prize: { $ref: "./common.types.yaml#/definitions/DKDollars" }
+      required: [rank_start, rank_end, prize]
+  entry_fee:
+    $ref: "./common.types.yaml#/definitions/DKDollars"
+  rake:
+    $ref: "./common.types.yaml#/definitions/Probability"
+  site:
+    $ref: "./common.types.yaml#/definitions/SiteEnum"
+required: [contest_id, name, field_size, payout_curve, entry_fee, rake, site]
+examples:
+  - contest_id: "DK_20251101_main"
+    name: "Main GPP"
+    field_size: 100000
+    payout_curve:
+      - { rank_start: 1, rank_end: 1, prize: 1000000 }
+      - { rank_start: 2, rank_end: 2, prize: 100000 }
+    entry_fee: 20
+    rake: 0.15
+    site: "DK"
+  - # invalid: field_size 0
+    contest_id: "x"
+    name: "bad"
+    field_size: 0
+    payout_curve: []
+    entry_fee: 0
+    rake: 0.2
+    site: "DK"

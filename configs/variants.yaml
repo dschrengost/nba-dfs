@@ -1,0 +1,43 @@
+# Example variant configuration
+
+# Total number of variants to generate (global or per base lineup depending on implementation)
+num_variants: 20
+
+# Swap window constraints (implementation-defined). Example expresses allowed salary delta range
+# or projection delta range for swap candidates.
+swap_window:
+  salary_delta: [ -800, 800 ]
+  proj_delta: [ -5.0, 5.0 ]
+
+# Randomness level (0–1) applied in selection/perturbation by the variant builder
+randomness: 0.15
+
+# Exposure targets and caps (per player/team/position)
+exposure_targets:
+  player_caps:
+    p1: 0.35
+    p2: 0.25
+  team_caps:
+    LAL: 0.5
+  position_caps:
+    C: 0.6
+
+# Group rules (soft/hard) to keep/avoid player combinations
+group_rules:
+  must_have: []
+  avoid_groups: []
+
+# Minimum number of changes vs. base lineup
+uniques: 1
+
+# Deduplicate variants by sorted player set
+avoid_dups: true
+
+# Optional ownership guidance shaping
+ownership_guidance:
+  enabled: false
+  target: 0.3
+
+# Seed for RNG
+seed: 42
+

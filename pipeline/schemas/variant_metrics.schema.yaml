@@ -1,0 +1,51 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/variant_metrics.schema.yaml"
+title: "Variant Metrics"
+description: "Aggregates and coverage metrics for variant catalogs."
+version: "0.1.0"
+type: object
+additionalProperties: false
+properties:
+  run_id:
+    $ref: "./common.types.yaml#/definitions/RunId"
+  aggregates:
+    type: object
+    additionalProperties: false
+    properties:
+      chalk_index: { $ref: "./common.types.yaml#/definitions/Probability" }
+      entropy: { type: number, minimum: 0 }
+    required: [chalk_index, entropy]
+  coverage:
+    type: object
+    additionalProperties: false
+    properties:
+      per_player:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          properties:
+            dk_player_id: { type: string }
+            inclusion_rate: { $ref: "./common.types.yaml#/definitions/Probability" }
+          required: [dk_player_id, inclusion_rate]
+      per_position:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          properties:
+            position: { $ref: "./common.types.yaml#/definitions/PosEnum" }
+            rate: { $ref: "./common.types.yaml#/definitions/Probability" }
+          required: [position, rate]
+required: [run_id, aggregates]
+examples:
+  - run_id: "run_20251101_var_001"
+    aggregates:
+      chalk_index: 0.35
+      entropy: 4.2
+    coverage:
+      per_player: [ { dk_player_id: "p1", inclusion_rate: 0.4 } ]
+      per_position: [ { position: "PG", rate: 0.5 } ]
+  - # invalid: aggregates missing
+    run_id: "20251101_180000_deadbee"
+    coverage: {}

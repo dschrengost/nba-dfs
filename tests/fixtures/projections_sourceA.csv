@@ -1,0 +1,4 @@
+DK_ID,Name,Team,Pos,Salary,Minutes,FP,Ceil,Floor,Own
+1001,Player A,BOS,SF/PF,9800,36,48.2,60.0,35.0,0.22
+1002,Player B,LAL,PG/SG,7200,30,34.5,45.0,25.0,0.10
+

@@ -1,0 +1,45 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/players.schema.yaml"
+title: "Players"
+description: "Canonical players table. One row per player (per global universe, not per slate)."
+version: "0.1.0"
+type: object
+additionalProperties: false
+properties:
+  dk_player_id:
+    type: string
+    description: "DraftKings player ID (string)"
+    minLength: 1
+  name:
+    type: string
+    minLength: 1
+  team:
+    $ref: "./common.types.yaml#/definitions/TeamCode"
+  pos_eligible:
+    type: array
+    minItems: 1
+    maxItems: 3
+    items:
+      $ref: "./common.types.yaml#/definitions/PosEnum"
+  notes:
+    type: string
+  first_seen_ts:
+    $ref: "./common.types.yaml#/definitions/UtcTimestamp"
+  last_seen_ts:
+    $ref: "./common.types.yaml#/definitions/UtcTimestamp"
+required: [dk_player_id, name, team, pos_eligible, first_seen_ts, last_seen_ts]
+examples:
+  - dk_player_id: "123456"
+    name: "Jayson Tatum"
+    team: "BOS"
+    pos_eligible: [SF, PF]
+    first_seen_ts: "2024-10-01T00:00:00.000Z"
+    last_seen_ts: "2024-11-01T00:00:00.000Z"
+  - # invalid: empty name, bad team
+    dk_player_id: "999"
+    name: ""
+    team: "B"
+    pos_eligible: [PG]
+    first_seen_ts: "2024-10-01T00:00:00.000Z"
+    last_seen_ts: "2024-11-01T00:00:00.000Z"
+

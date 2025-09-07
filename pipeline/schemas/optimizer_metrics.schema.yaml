@@ -1,0 +1,49 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/optimizer_metrics.schema.yaml"
+title: "Optimizer Metrics"
+description: "Aggregates and distributions describing optimizer outputs."
+version: "0.1.0"
+type: object
+additionalProperties: false
+properties:
+  run_id:
+    $ref: "./common.types.yaml#/definitions/RunId"
+  aggregates:
+    type: object
+    additionalProperties: false
+    properties:
+      mean_proj: { type: number }
+      median_proj: { type: number }
+      stdev_proj: { type: number, minimum: 0 }
+      salary_utilization_mean: { type: number, minimum: 0, maximum: 50000 }
+      dupe_risk_index: { $ref: "./common.types.yaml#/definitions/Probability" }
+    required: [mean_proj, median_proj, stdev_proj, salary_utilization_mean]
+  distributions:
+    type: object
+    additionalProperties: false
+    properties:
+      proj_fp:
+        type: array
+        items:
+          $ref: "./common.types.yaml#/definitions/HistogramBin"
+      total_salary:
+        type: array
+        items:
+          $ref: "./common.types.yaml#/definitions/HistogramBin"
+required: [run_id, aggregates]
+examples:
+  - run_id: "run_20251101_opt_001"
+    aggregates:
+      mean_proj: 275.0
+      median_proj: 274.0
+      stdev_proj: 10.5
+      salary_utilization_mean: 49750
+      dupe_risk_index: 0.18
+    distributions:
+      proj_fp: [ { bin_start: 250, bin_end: 260, count: 10 } ]
+      total_salary: [ { bin_start: 48000, bin_end: 50000, count: 25 } ]
+  - # invalid: missing required aggregates fields
+    run_id: "20251101_180000_deadbee"
+    aggregates:
+      mean_proj: 275.0
+    distributions: {}

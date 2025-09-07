@@ -1,0 +1,62 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/field_metrics.schema.yaml"
+title: "Field Metrics"
+description: "Coverage, duplication risk, and pairwise similarity summaries for a field run."
+version: "0.1.0"
+type: object
+additionalProperties: false
+properties:
+  run_id:
+    $ref: "./common.types.yaml#/definitions/RunId"
+  coverage:
+    type: object
+    additionalProperties: false
+    properties:
+      per_player:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          properties:
+            dk_player_id: { type: string }
+            rate: { $ref: "./common.types.yaml#/definitions/Probability" }
+          required: [dk_player_id, rate]
+      per_team:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          properties:
+            team: { $ref: "./common.types.yaml#/definitions/TeamCode" }
+            rate: { $ref: "./common.types.yaml#/definitions/Probability" }
+          required: [team, rate]
+      per_position:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          properties:
+            position: { $ref: "./common.types.yaml#/definitions/PosEnum" }
+            rate: { $ref: "./common.types.yaml#/definitions/Probability" }
+          required: [position, rate]
+  duplication_risk:
+    type: number
+    minimum: 0
+    maximum: 1
+  pairwise_jaccard:
+    type: array
+    description: "Optional: histogram of Jaccard similarities between pairs of lineups."
+    items: { $ref: "./common.types.yaml#/definitions/HistogramBin" }
+required: [run_id]
+examples:
+  - run_id: "run_20251101_field_001"
+    coverage:
+      per_player: [ { dk_player_id: "p1", rate: 0.2 } ]
+      per_team: [ { team: "BOS", rate: 0.3 } ]
+      per_position: [ { position: "PG", rate: 0.5 } ]
+    duplication_risk: 0.15
+    pairwise_jaccard: [ { bin_start: 0.0, bin_end: 0.1, count: 10 } ]
+  - # invalid: duplication_risk > 1
+    run_id: "20251101_180000_deadbee"
+    duplication_risk: 1.5
+    coverage: {}

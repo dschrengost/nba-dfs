@@ -1,0 +1,14 @@
+extends: default
+
+rules:
+  document-start: disable
+  line-length:
+    max: 200
+    level: warning
+  braces: disable
+  brackets: disable
+  commas: disable
+  empty-lines: disable
+  comments:
+    min-spaces-from-content: 1
+
