@@ -3,20 +3,26 @@
 **Owner:** Daniel S.  
 **Repo:** `nba-dfs` (monorepo)  
 **Scope:** Optimizer runs (extendable to sampler/sim later)  
-**Status:** Draft for implementation
+**Status:** Draft for implementation  
+**Aligns With:** `AGENTS.md` §§3, 6, 7, 14
 
 ---
 
 ## 1) Why
-We need a first-class way to **load prior optimizer runs** and a **simple retention policy** so we don’t hoard old artifacts. For optimizer runs, **keep the last 10** (MRU) and **prune on save**.
+We need a first-class way to **load prior optimizer runs** and a **retention policy** that aligns with `AGENTS.md`:
+- Runs live under top-level `runs/` and are organized by `SLATE_KEY`.
+- Safety rail: “Block any write under runs/ without a slate key”.
+- Retention: “Prune non‑tagged runs after N days (TBD)”.
+
+This PRP specifies loading surfaces and proposes a default retention of **14 days** for non‑tagged runs, enforced per‑module and per‑slate, executed on save and optionally via a periodic job.
 
 ---
 
 ## 2) Goals (Acceptance Criteria)
-- A user can open a **“Load Run”** UI and select from the **last 10 optimizer runs** (most recent first).
-- Loading a run restores: parameters, lambda/ownership settings, seed, pool metrics, and references to artifacts (CSV/JSON).
-- Saving a new optimizer run **automatically prunes** older runs beyond the configured limit (default 10).
-- A **CLI** and **REST** surface exist for listing, loading, saving, and pruning runs.
+- A user can open a **“Load Run”** UI and browse optimizer runs for the selected `SLATE_KEY`, most‑recent first.
+- Loading a run restores: parameters, ownership settings, seed, pool metrics, and references to artifacts.
+- Saving a new optimizer run triggers **pruning of non‑tagged runs older than `runs.retention_days`** (default 14) under that module/slate.
+- A **CLI** and **REST** surface exist for listing, loading, saving, and pruning runs. Listing supports filtering by `module` and `slate_key`.
 - All new logic covered by unit tests; e2e happy-path test loads a saved run and verifies store state matches saved meta.
 
 ---
@@ -29,86 +35,66 @@ We need a first-class way to **load prior optimizer runs** and a **simple retent
 
 ## 4) Storage & Data Model
 ### 4.1 Directory Layout (local disk)
+Conform to `AGENTS.md` top-level layout and slate keying.
 ```
-data/
-  runs/
-    optimizer/
-      20250907_201455__main/         # run_id dir
-        run_meta.json                 # canonical metadata
-        inputs/                       # captured inputs (projections.csv, config.json, etc)
-        outputs/                      # lineups.csv, telemetry.json, diagnostics.json
-    index/
-      optimizer_index.json            # MRU list (derived but cached for fast UI)
+/runs/
+  <SLATE_KEY>/                      # SLATE_KEY: YY-MM-DD_HHMMSS (America/New_York)
+    optimizer/                      # module (stage)
+      <RUN_ID>/                     # eg: 25-09-07_201455__main
+        run_meta.json               # canonical metadata (see 4.2)
+        inputs_hash.json            # content hashes + schema versions
+        artifacts/                  # lineups.csv, metrics.json, logs, etc.
+        tag.txt (optional)          # freeform label; prevents pruning
 ```
+Notes:
+- All writes occur under a concrete `SLATE_KEY` (satisfies safety rail).
+- Keep directory names short and portable; avoid spaces.
 
 ### 4.2 `run_meta.json` (schema sketch)
 ```json
 {
-  "run_id": "20250907_201455__main",
-  "type": "optimizer",
+  "schema_version": 1,
+  "module": "optimizer",
+  "run_id": "25-09-07_201455__main",
   "created_at": "2025-09-07T20:14:55Z",
-  "tag": "scenario1", 
-  "slate_key": "2025-10-28-DK-10g",
-  "engine": {
-    "solver": "cp-sat",
-    "seed": 42
-  },
+  "slate_key": "25-09-07_171500",
+  "tag": "scenario1",
+  "engine": { "solver": "cp-sat", "seed": 42 },
   "params": {
     "uniques": 2,
-    "ownership_penalty": {
-      "enabled": true,
-      "lambda": 8.0,
-      "curve": "by_points"
-    }
-  },
-  "inputs": {
-    "projections_csv": "inputs/projections.csv",
-    "player_ids_csv": "inputs/player_ids.csv",
-    "config_json": "inputs/config.json"
+    "ownership_penalty": { "enabled": true, "lambda": 8.0, "curve": "by_points" }
   },
   "artifacts": {
-    "lineups_csv": "outputs/lineups.csv",
-    "diagnostics_json": "outputs/diagnostics.json",
-    "telemetry_json": "outputs/telemetry.json"
+    "lineups_csv": "artifacts/lineups.csv",
+    "diagnostics_json": "artifacts/diagnostics.json",
+    "telemetry_json": "artifacts/telemetry.json"
   },
+  "inputs_hash_path": "inputs_hash.json",
   "diagnostics": {
-    "pool": {
-      "lineups": 150,
-      "avg_pairwise_jaccard": 0.57,
-      "unique_player_count": 98
-    },
-    "ownership_penalty": {
-      "applied": true,
-      "lambda_used": 8.0
-    }
+    "pool": { "lineups": 150, "avg_pairwise_jaccard": 0.57, "unique_player_count": 98 },
+    "ownership_penalty": { "applied": true, "lambda_used": 8.0 }
   }
 }
 ```
 
-### 4.3 MRU Index (`optimizer_index.json`)
-```json
-{
-  "type": "optimizer",
-  "limit": 10,
-  "runs": ["20250907_201455__main", "20250907_185930__main", "..."]
-}
-```
+### 4.3 MRU Listing (derived)
+To honor the “runs/ is a registry” concept and avoid extra state, the MRU list is **derived at read time** by scanning `/runs/<SLATE_KEY>/<module>/*` and sorting by `created_at` (from `run_meta.json`) or directory mtime as fallback. Implementations may memoize in‑process but must not persist separate index files under `runs/`.
 
 ---
 
 ## 5) Public Surfaces
 ### 5.1 REST (Next.js API routes or FastAPI—keep consistent with repo)
-- `GET /api/runs?type=optimizer&limit=10` → MRU runs (reads index; falls back to fs)
-- `GET /api/runs/{run_id}` → returns `run_meta.json`
-- `POST /api/runs/save` → body: `run_meta` (+ server writes artifacts if passed/paths)
-- `POST /api/runs/prune?type=optimizer&keep=10` → prunes oldest beyond `keep`
-- `DELETE /api/runs/{run_id}` → removes directory & updates index
-- `GET /api/runs/validate/{run_id}` → optional: checks slate_key/player universe compatibility
+- `GET /api/runs?module=optimizer&slate_key=<key>&limit=10` → MRU runs (derived from fs)
+- `GET /api/runs/{slate_key}/{module}/{run_id}` → returns `run_meta.json`
+- `POST /api/runs/save` → body: `slate_key`, `module`, `run_meta` (+ server places artifacts)
+- `POST /api/runs/prune` → body/query: `module`, `slate_key`, `retention_days` (default from config); prunes non‑tagged older than threshold
+- `DELETE /api/runs/{slate_key}/{module}/{run_id}` → removes directory
+- `GET /api/runs/validate/{slate_key}/{module}/{run_id}` → optional: checks slate_key/player universe compatibility
 
-### 5.2 CLI (uvx entry point)
-- `uv run python -m tools.runs list --type optimizer --limit 10`
-- `uv run python -m tools.runs load --id 20250907_201455__main`
-- `uv run python -m tools.runs prune --type optimizer --keep 10`
+### 5.2 CLI (uv entry point)
+- `uv run python -m tools.runs list --module optimizer --slate <SLATE_KEY> --limit 10`
+- `uv run python -m tools.runs load --slate <SLATE_KEY> --module optimizer --id 25-09-07_201455__main`
+- `uv run python -m tools.runs prune --module optimizer --slate <SLATE_KEY> --retention-days 14`
 
 ---
 
@@ -124,37 +110,54 @@ data/
 ---
 
 ## 7) Retention Policy & Pruning
-- Default: **optimizer.keep = 10** (configurable in `config/runs.yaml`).
-- **On save**: append run to MRU; if count > keep → prune oldest by filesystem mtime (or meta.created_at).
-- **Idempotent & safe**: skip if directory missing; ignore non-optimizer runs.
-- Optional daily cron (`scripts/pyopt/cleanup_old_runs.py`) for belt-and-suspenders.
+- Default: **runs.retention_days = 14** (tracked in `configs/defaults.yaml`).
+- Scope: pruning applies to **non‑tagged** runs only (presence of `tag.txt` or non‑empty `run_meta.tag` exempts a run).
+- Timing: execute pruning **on save** for the given `slate_key/module`, and optionally via a scheduled job.
+- Ordering: identify candidates by `created_at` from `run_meta.json`; fall back to directory mtime.
+- Safety: never delete outside `/runs/<SLATE_KEY>/<module>/`; use atomic rename to a temp path before removal if supported.
 
-**Pseudo-code (prune):**
+**Pseudo-code (prune by age):**
 ```python
-def prune(type: str = "optimizer", keep: int = 10):
-    runs = sorted(list_dirs(f"data/runs/{type}"), key=mtime, reverse=True)
-    for old in runs[keep:]:
-        rm_rf(old)
-    write_index(type, [basename(p) for p in runs[:keep]])
+from datetime import datetime, timedelta, timezone
+
+def prune(module: str, slate_key: str, retention_days: int = 14) -> int:
+    base = Path("runs") / slate_key / module
+    if not base.exists():
+        return 0
+    cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+    removed = 0
+    for run_dir in base.iterdir():
+        if not run_dir.is_dir():
+            continue
+        if (run_dir / "tag.txt").exists():
+            continue
+        meta = json.loads((run_dir / "run_meta.json").read_text())
+        if meta.get("tag"):
+            continue
+        created_at = _parse_dt(meta.get("created_at")) or _mtime_dt(run_dir)
+        if created_at < cutoff:
+            _safe_remove(run_dir)
+            removed += 1
+    return removed
 ```
 
 ---
 
 ## 8) Implementation Plan (Small, linear steps)
-1. **Scaffold**: `src/runs/` python lib with fs helpers; `data/runs/index/` writer/reader.
-2. **Write meta** on optimizer completion; ensure `run_id` deterministic (`YYYYMMDD_HHMMSS__branchOrTag`).
-3. **MRU index**: build-on-save; on first run, rebuild from fs for robustness.
-4. **Prune on save** (configurable keep N); expose CLI entry points (uv scripts).
-5. **API routes** mirroring CLI.
+1. **Scaffold**: `src/runs/` Python lib with fs helpers; no persisted indices.
+2. **Write meta** on optimizer completion; ensure `RUN_ID = YY-MM-DD_HHMMSS__<branchOrTag>`; include `schema_version`.
+3. **List/MRU**: derive from fs, sorting by `created_at` with mtime fallback.
+4. **Prune on save** using `runs.retention_days`; expose CLI entry points (uv scripts) and REST.
+5. **API routes** mirroring CLI with `module` and `slate_key` parameters.
 6. **UI modal** to browse + load → hydrate `useRunStore()`.
 7. **Compat check** and warning toast if slate mismatch.
-8. **Tests**: unit (fs ops, index integrity, prune idempotency), integration (save→load), e2e (UI click loads expected state).
+8. **Tests**: unit (fs ops, schema validate, prune idempotency), integration (save→load), e2e (UI click loads expected state).
 9. **Docs**: README section + usage examples.
 
 ---
 
 ## 9) Testing Strategy
-- **Unit**: temp dirs with >10 fake runs; verify prune removes oldest and index matches.
+- **Unit**: temp dirs with mixed ages and tags; verify prune removes only non‑tagged older than cutoff.
 - **Contract**: `run_meta.json` schema validation (jsonschema) + required fields.
 - **Integration**: save a run → load via API → hydrate store → assert UI state (Playwright or Vitest + msw).
 - **Regression**: ensure run IDs are unique per save even across concurrent runs.
@@ -162,13 +165,12 @@ def prune(type: str = "optimizer", keep: int = 10):
 ---
 
 ## 10) Config
-`config/runs.yaml`:
+Add to `configs/defaults.yaml`:
 ```yaml
-optimizer:
-  keep: 10
-  base_dir: "data/runs/optimizer"
-  index: "data/runs/index/optimizer_index.json"
+runs:
+  retention_days: 14
 ```
+Local overrides may be added in `configs/local.yaml` (gitignored).
 
 ---
 
@@ -181,11 +183,11 @@ optimizer:
 
 ## 12) GitHub Actions (begin/end)
 **Start:**
-- Create branch: `feature/runs-01-load-and-retain`
-- Open WIP PR targeting `main`
+- Create branch: `feat/prp-runs-01`
+- Open WIP PR targeting `dev`
 
 **End:**
-- Rebase on `main`, squash-merge PR
+- Rebase on `dev`, squash-merge PR to `main` via integration
 - Tag: `runs-01` (optional) and update `CHANGELOG.md`
 
 ---
@@ -193,10 +195,10 @@ optimizer:
 ## 13) Minimal Stubs (illustrative only)
 ```python
 # src/runs/api.py
-def save_run(meta: dict) -> str: ...
-def get_run(run_id: str) -> dict: ...
-def list_runs(type: str = "optimizer", limit: int = 10) -> list[dict]: ...
-def prune_runs(type: str = "optimizer", keep: int = 10) -> None: ...
+def save_run(slate_key: str, module: str, meta: dict) -> str: ...
+def get_run(slate_key: str, module: str, run_id: str) -> dict: ...
+def list_runs(slate_key: str, module: str, limit: int = 10) -> list[dict]: ...
+def prune_runs(slate_key: str, module: str, retention_days: int = 14) -> int: ...
 ```
 
 ---

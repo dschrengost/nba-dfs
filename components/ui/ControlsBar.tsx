@@ -15,7 +15,8 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "./dropdown-menu";
-import { ChevronDown, Settings2, Zap, Target } from "lucide-react";
+import { ChevronDown, Settings2, Zap, Target, FolderOpen } from "lucide-react";
+import LoadRunModal from "@/components/runs/LoadRunModal";
 
 export default function ControlsBar({
   gridMode,
@@ -38,6 +39,7 @@ export default function ControlsBar({
   const [minUniques, setMinUniques] = useState<number>(1);
   const [projectionsPath, setProjectionsPath] = useState<string>("");
   const [playerIdsPath, setPlayerIdsPath] = useState<string>("");
+  const [showLoad, setShowLoad] = useState<boolean>(false);
 
   // Persist file paths
   useEffect(() => {
@@ -303,6 +305,9 @@ export default function ControlsBar({
             </DropdownMenu>
             
             <div className="flex gap-1">
+              <Button variant="outline" onClick={() => setShowLoad(true)} disabled={status === "running"} size="sm" className="h-6 px-2 text-xs">
+                <FolderOpen className="h-3 w-3 mr-1" /> Load
+              </Button>
               <Button variant="outline" onClick={() => reset()} disabled={status === "running"} size="sm" className="h-6 px-2 text-xs">
                 Reset
               </Button>
@@ -337,6 +342,7 @@ export default function ControlsBar({
             </div>
           </div>
         </div>
+        <LoadRunModal open={showLoad} onClose={() => setShowLoad(false)} />
       </Card>
     </TooltipProvider>
   );

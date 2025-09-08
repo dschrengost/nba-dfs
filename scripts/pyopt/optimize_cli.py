@@ -25,6 +25,8 @@ _HERE = os.path.dirname(__file__)
 _ROOT = os.path.abspath(os.path.join(_HERE, os.pardir, os.pardir))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
+# Ensure downstream helpers resolve paths relative to repo root
+os.environ.setdefault("PROJECT_ROOT", _ROOT)
 
 import pandas as pd
 from collections import Counter
@@ -430,6 +432,47 @@ def main() -> int:
               },
             "diagnostics": diag_safe,
         }
+
+        # Auto-save run under runs/<SLATE_KEY>/optimizer (rolling keep=10)
+        try:
+            slate_key = str(req.get("slateKey") or "").strip()
+            if not slate_key:
+                try:
+                    from src.runs.api import gen_slate_key  # type: ignore
+                    slate_key = gen_slate_key()
+                except Exception:
+                    slate_key = time.strftime("%y-%m-%d_%H%M%S", time.gmtime())
+
+            meta = {
+                "schema_version": 1,
+                "module": "optimizer",
+                "slate_key": slate_key,
+                "engine": {"solver": engine, "seed": seed},
+                "params": {
+                    "uniques": int(cons_in.get("unique_players", 0)),
+                    "ownership_penalty": {
+                        "enabled": bool((constraints_echo or {}).get("ownership_penalty", {}).get("enabled", False)),
+                        "lambda": float((constraints_echo or {}).get("ownership_penalty", {}).get("weight_lambda", 0.0)),
+                        "curve": str((constraints_echo or {}).get("ownership_penalty", {}).get("curve_type", "linear")),
+                    },
+                },
+                "diagnostics": {"pool": pool_diag},
+            }
+
+            artifacts = {
+                "lineups_json": out_lineups,
+                "diagnostics_json": diag_safe,
+                "summary_json": out["summary"],
+            }
+
+            from src.runs.api import save_run  # type: ignore
+            saved = save_run(slate_key=slate_key, module="optimizer", meta=meta, artifacts=artifacts, keep_last=10)
+            out["run_id"] = saved.run_id
+            out["slate_key"] = saved.slate_key
+            out["run_path"] = str(saved.run_dir)
+        except Exception as e:
+            _stderr(f"[runs/save] Warning: failed to save run: {e}")
+
         out = _clean_nans(out)
         sys.stdout.write(json.dumps(out))
         return 0

@@ -130,6 +130,17 @@ export default function RunSummary() {
           <div className="font-medium">Optimizer Run</div>
           <Separator orientation="vertical" className="h-4" />
 
+          {(summary as any).slateKey && (
+            <Badge variant="outline" className="text-[10px]" title="Slate Key">
+              {(summary as any).slateKey}
+            </Badge>
+          )}
+          {(summary as any).runId && (
+            <Badge variant="outline" className="text-[10px]" title="Run ID">
+              {(summary as any).runId}
+            </Badge>
+          )}
+
           {summary.engineUsed && (
             <Tooltip>
               <TooltipTrigger>
