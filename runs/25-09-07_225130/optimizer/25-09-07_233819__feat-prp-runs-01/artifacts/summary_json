@@ -1,0 +1,26 @@
+{
+  "tried": 77,
+  "valid": 77,
+  "bestScore": 271.4,
+  "elapsedMs": 30068,
+  "invalidReasons": {
+    "salary": 0,
+    "slots": 0,
+    "teamcap": 0,
+    "dup": 0
+  },
+  "optionsUsed": {
+    "N_lineups": 77,
+    "unique_players": 1,
+    "ownership_penalty": {
+      "enabled": true,
+      "mode": "by_points",
+      "weight_lambda": 8,
+      "curve_type": "sigmoid"
+    },
+    "pruning": {
+      "drop_pct": 0.2
+    },
+    "randomness_pct": 7
+  }
+}

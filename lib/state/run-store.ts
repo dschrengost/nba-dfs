@@ -171,10 +171,51 @@ export const useRunStore = create<State>((set, get) => ({
     }
 
     try {
+      const fmtSlateKey = () => {
+        try {
+          const fmt = new Intl.DateTimeFormat("en-US", {
+            timeZone: "America/New_York",
+            year: "2-digit",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          });
+          const parts = Object.fromEntries(fmt.formatToParts(new Date()).map((p) => [p.type, p.value]));
+          const yy = String(parts.year).slice(-2);
+          const mm = String(parts.month).padStart(2, "0");
+          const dd = String(parts.day).padStart(2, "0");
+          const hh = String(parts.hour).padStart(2, "0");
+          const mi = String(parts.minute).padStart(2, "0");
+          const ss = String(parts.second).padStart(2, "0");
+          return `${yy}-${mm}-${dd}_${hh}${mi}${ss}`;
+        } catch {
+          const d = new Date();
+          const yy = String(d.getFullYear()).slice(-2);
+          const mm = String(d.getMonth() + 1).padStart(2, "0");
+          const dd = String(d.getDate()).padStart(2, "0");
+          const hh = String(d.getHours()).padStart(2, "0");
+          const mi = String(d.getMinutes()).padStart(2, "0");
+          const ss = String(d.getSeconds()).padStart(2, "0");
+          return `${yy}-${mm}-${dd}_${hh}${mi}${ss}`;
+        }
+      };
+      // Use persisted slateKey if present to keep runs grouped
+      let slateKey: string | null = null;
+      try {
+        slateKey = localStorage.getItem("dfs_slate_key");
+      } catch {}
+      if (!slateKey) {
+        slateKey = fmtSlateKey();
+        try { localStorage.setItem("dfs_slate_key", slateKey); } catch {}
+      }
+
       const res = await fetch("/api/optimize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, slateKey }),
       });
       const data = await res.json();
       if (!res.ok || !data?.ok) {
@@ -227,6 +268,8 @@ export const useRunStore = create<State>((set, get) => ({
         lineups,
         summary: {
           ...data.summary,
+          runId: data.run_id ?? (data.summary?.runId ?? undefined),
+          slateKey: data.slate_key ?? (data.summary?.slateKey ?? undefined),
           valid: lineups.length,
           tried: data.diagnostics?.N ?? data.summary?.tried ?? lineups.length,
           elapsedMs:
@@ -237,6 +280,23 @@ export const useRunStore = create<State>((set, get) => ({
           playerMap: data.playerMap ?? data.summary?.playerMap ?? undefined, // Add playerMap for roster mapping
         },
       });
+
+      // Persist slate key from backend (if provided) and toast run_id for discoverability
+      try {
+        if (data.slate_key) {
+          localStorage.setItem("dfs_slate_key", String(data.slate_key));
+        }
+      } catch {}
+      try {
+        const { toast } = await import("@/components/ui/sonner");
+        const rid = data.run_id ? String(data.run_id) : undefined;
+        const sk = data.slate_key ? String(data.slate_key) : undefined;
+        if (rid || sk) {
+          (toast as any).success?.(`Saved run${rid ? ` ${rid}` : ""}${sk ? ` under ${sk}` : ""}`) ||
+            (toast as any).info?.(`Saved run${rid ? ` ${rid}` : ""}${sk ? ` under ${sk}` : ""}`) ||
+            toast(`Saved run${rid ? ` ${rid}` : ""}${sk ? ` under ${sk}` : ""}`);
+        }
+      } catch {}
 
       // Toast warnings
       try {

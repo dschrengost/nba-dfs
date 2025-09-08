@@ -1,0 +1,171 @@
+{
+  "engine": "cp_sat",
+  "N": 77,
+  "status": "FEASIBLE",
+  "best_obj": 263462.0,
+  "best_bound": 265289.0,
+  "achieved_gap": 0.006934586391965445,
+  "wall_time_sec": 0.7119610000000001,
+  "model": {
+    "num_bool_vars": 338,
+    "num_slots": 8
+  },
+  "params": {
+    "max_time_in_seconds": 0.7,
+    "relative_gap_limit": 0.001,
+    "max_deterministic_time": Infinity,
+    "num_search_workers": 0,
+    "random_seed": 24,
+    "adaptive_time": false,
+    "final_time_cap": 0.7
+  },
+  "pruning": {
+    "enabled": true,
+    "original_players": 116,
+    "kept_players": 100,
+    "reduction_pct": 13.8,
+    "top_pruned": [
+      "Josh Giddey (28.4)",
+      "Scoot Henderson (27.2)",
+      "Ben Simmons (26.9)"
+    ],
+    "locks_kept": 0
+  },
+  "wiring_check": {
+    "run_id": "1757302669",
+    "contract": {
+      "hash": "dfc8951b139e",
+      "rows": 100,
+      "own_min": 0.018000000000000002,
+      "own_max": 0.182,
+      "pct_over_1": 0.0,
+      "own_max_before": 0.182,
+      "scaled_by": 1.0
+    },
+    "objective": {
+      "scale": 1000,
+      "lambda_ui": 8.0,
+      "lambda_eff": 8.0,
+      "lambda_scale_used": 1.0,
+      "points_scaled_total": 3370500,
+      "lambda_penalty_scaled_total": 85942,
+      "ratio": 0.0254982940216585
+    }
+  },
+  "total_players": 116,
+  "matched_players": "116",
+  "data_source": "pre-existing_column",
+  "errors": [],
+  "warnings": [
+    "DK IDs already present in projections data"
+  ],
+  "failed_name_matching": 0,
+  "failed_position_validation": 0,
+  "success_rate": 100.0,
+  "normalization": {
+    "ownership": {
+      "source_col": "own_proj",
+      "scaled_by": 1.0,
+      "scaled_by_100": false,
+      "clip_applied": true,
+      "non_numeric_dropped": 0,
+      "nulls_filled": 0,
+      "max_before": 0.182,
+      "max_after": 0.182,
+      "num_clipped": 0,
+      "cols_diff_post_merge": [],
+      "own_proj_max_post_merge": 0.182
+    }
+  },
+  "constraints_snapshot": {
+    "ownership_enabled": true
+  },
+  "ownership_penalty": {
+    "achieved_offoptimal_pct": 0.0,
+    "enabled": true,
+    "mode": "by_points",
+    "lambda_used": 8.0,
+    "applied": true,
+    "reason": null,
+    "avg_chalk_index": 0.08752108996106515,
+    "avg_penalty_points": 5.60134975750817,
+    "curve_type": "sigmoid",
+    "weight_lambda": 8
+  },
+  "constraints": {
+    "N_lineups": 77,
+    "unique_players": 1,
+    "max_salary": null,
+    "min_salary": null,
+    "global_team_limit": null,
+    "team_limits": {},
+    "lock_ids": [],
+    "ban_ids": [],
+    "proj_min": 0.0,
+    "randomness_pct": 7.0,
+    "cp_sat_params": {},
+    "ownership_penalty": {
+      "enabled": true,
+      "mode": "by_points",
+      "weight_lambda": 8,
+      "curve_type": "sigmoid",
+      "power_k": 1.5,
+      "pivot_p0": 0.2,
+      "curve_alpha": 2.0,
+      "clamp_min": 0.01,
+      "clamp_max": 0.8,
+      "shrink_gamma": 1.0,
+      "target_offoptimal_pct": 0.05,
+      "tol_offoptimal_pct": 0.01
+    },
+    "require_dk_ids": false
+  },
+  "constraints_raw": {
+    "N_lineups": 77,
+    "unique_players": 1,
+    "ownership_penalty": {
+      "enabled": true,
+      "mode": "by_points",
+      "weight_lambda": 8,
+      "curve_type": "sigmoid"
+    },
+    "pruning": {
+      "drop_pct": 0.2
+    },
+    "randomness_pct": 7
+  },
+  "pool": {
+    "lineups": 77,
+    "avg_overlap_players": 5.163362952836637,
+    "avg_pairwise_jaccard": 0.48552988744377124,
+    "unique_player_count": 26,
+    "exposures": {
+      "36385861": 0.8441558441558441,
+      "36385843": 0.8571428571428571,
+      "36385877": 0.987012987012987,
+      "36385927": 0.5194805194805194,
+      "36385559": 1.0,
+      "36385719": 0.22077922077922077,
+      "36385935": 0.8961038961038961,
+      "36385774": 0.36363636363636365,
+      "36385943": 0.4805194805194805,
+      "36385726": 0.16883116883116883,
+      "36385812": 0.2987012987012987,
+      "36385814": 0.22077922077922077,
+      "36385792": 0.15584415584415584,
+      "36385702": 0.12987012987012986,
+      "36385759": 0.09090909090909091,
+      "36385911": 0.06493506493506493,
+      "36385786": 0.11688311688311688,
+      "36385755": 0.15584415584415584,
+      "36385742": 0.025974025974025976,
+      "36385657": 0.1038961038961039,
+      "36385711": 0.07792207792207792,
+      "36385671": 0.06493506493506493,
+      "36385904": 0.11688311688311688,
+      "36385920": 0.012987012987012988,
+      "36385806": 0.012987012987012988,
+      "36385799": 0.012987012987012988
+    }
+  }
+}

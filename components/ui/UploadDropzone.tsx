@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { CheckCircle, FileText, Upload, Loader2, AlertCircle } from "lucide-react";
 import { Dropzone, DropzoneContent, DropzoneEmptyState } from "./dropzone";
 import { Button } from "./button";
+import { Card } from "./card";
+import { Badge } from "./badge";
 import { toast } from "./sonner";
 import { UPLOAD_MIN_MS } from "@/lib/ui/constants";
 import { prefersReducedMotion } from "@/lib/ui/a11y";
@@ -56,7 +58,7 @@ export default function UploadDropzone({ spotlight = false }: Props) {
   };
 
   return (
-    <div className="w-[350px]">
+    <Card className="w-[240px] bg-card/50 backdrop-blur-sm">
       <Dropzone
         accept={{ "text/csv": [".csv"] }}
         maxFiles={10}
@@ -69,40 +71,44 @@ export default function UploadDropzone({ spotlight = false }: Props) {
         disabled={state === "loading"}
         src={uploadedFiles.length > 0 ? uploadedFiles : undefined}
         className={cn(
-          "h-[40px] w-full px-3 py-2 flex-row items-center justify-between gap-2 text-sm border-dashed transition-all",
+          "h-[52px] w-full px-3 py-2 flex-col items-start justify-center gap-1 text-sm border-dashed transition-all rounded-md",
           spotlight && "shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]",
-          state === "success" && "border-green-500/50 bg-green-500/5",
-          state === "error" && "border-red-500/50 bg-red-500/5",
-          state === "loading" && "border-blue-500/50 bg-blue-500/5"
+          state === "success" && "border-green-500/50 bg-green-500/10",
+          state === "error" && "border-red-500/50 bg-red-500/10", 
+          state === "loading" && "border-blue-500/50 bg-blue-500/10",
+          state === "idle" && "border-border/50 hover:border-border/80 hover:bg-accent/20"
         )}
       >
         {state === "idle" && uploadedFiles.length === 0 && (
-          <DropzoneEmptyState className="flex-row items-center justify-start gap-2 w-full">
+          <DropzoneEmptyState className="flex-col items-center justify-center gap-1 w-full h-full">
             <Upload className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">
+            <span className="text-xs text-muted-foreground text-center leading-tight">
               Drag & drop projections.csv / player_ids.csv
             </span>
           </DropzoneEmptyState>
         )}
 
         {state === "loading" && (
-          <div className="flex items-center gap-2 w-full">
-            <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
-            <span className="text-sm text-blue-600">Uploading...</span>
+          <div className="flex flex-col items-center gap-1 w-full h-full justify-center">
+            <Badge variant="secondary" className="bg-blue-500/20 text-blue-600 border-blue-500/30">
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              Uploading
+            </Badge>
+            <span className="text-xs text-blue-500/80">Processing files...</span>
           </div>
         )}
 
         {state === "success" && uploadedFiles.length > 0 && (
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              <span className="text-sm font-medium text-green-600">Files loaded ✓</span>
-            </div>
+          <div className="flex flex-col items-center justify-center gap-1 w-full h-full">
+            <Badge variant="secondary" className="bg-green-500/20 text-green-600 border-green-500/30">
+              <CheckCircle className="h-3 w-3 mr-1" />
+              Files loaded
+            </Badge>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleReplace}
-              className="h-6 px-2 text-xs hover:bg-transparent hover:text-primary"
+              className="h-5 px-2 text-xs hover:bg-accent/50 hover:text-foreground"
               data-testid="replace-upload-button"
             >
               Replace
@@ -111,9 +117,12 @@ export default function UploadDropzone({ spotlight = false }: Props) {
         )}
 
         {state === "error" && (
-          <div className="flex items-center gap-2 w-full">
-            <AlertCircle className="h-4 w-4 text-red-500" />
-            <span className="text-sm text-red-600">Only .csv files are supported</span>
+          <div className="flex flex-col items-center gap-1 w-full h-full justify-center">
+            <Badge variant="destructive" className="bg-red-500/20 text-red-600 border-red-500/30">
+              <AlertCircle className="h-3 w-3 mr-1" />
+              CSV only
+            </Badge>
+            <span className="text-xs text-red-500/80 text-center">Only .csv files supported</span>
           </div>
         )}
 
@@ -136,6 +145,6 @@ export default function UploadDropzone({ spotlight = false }: Props) {
           </DropzoneContent>
         )}
       </Dropzone>
-    </div>
+    </Card>
   );
 }
