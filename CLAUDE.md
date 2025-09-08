@@ -10,11 +10,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Node.js dependencies**: `npm install`
 
 ### Code Quality & Testing
+
+**Python**:
 - **Format code**: `black .`
 - **Lint code**: `ruff check .` (fix with `ruff check . --fix`)
 - **Type checking**: `mypy .`
 - **Run tests**: `pytest -q` (configured in pyproject.toml)
 - **Test coverage**: `pytest --cov`
+
+**Frontend (Next.js)**:
+- **Development server**: `npm run dev` (runs on port 3000)
+- **Build**: `npm run build`
+- **Start production**: `npm run start` (runs on port 3000)
+- **Run tests**: `npm run test` (Vitest)
 
 ### CI Pipeline (must pass before commit)
 ```bash
@@ -31,7 +39,7 @@ pytest -q
 
 ## Architecture Overview
 
-This is a **monorepo** for NBA Daily Fantasy Sports data pipeline and analysis tools with strict deterministic processing requirements.
+This is a **monorepo** for NBA Daily Fantasy Sports data pipeline and analysis tools with strict deterministic processing requirements. It combines a Python backend for data processing with a Next.js frontend for visualization and interaction.
 
 ### Core Structure
 - **`pipeline/`**: Data ingestion, normalization, schemas, and I/O adapters
@@ -46,13 +54,19 @@ This is a **monorepo** for NBA Daily Fantasy Sports data pipeline and analysis t
 - `pipeline/ingest/`: CLI for data ingestion with YAML source mappings
 - `pipeline/schemas/`: Strict JSON Schema definitions (Draft 2020-12) for all data contracts
 - `pipeline/io/`: File operations and validation utilities
-- `pipeline/adapters/`: Data transformation adapters
+- `pipeline/registry/`: Run registry management
 
 **Processes Module**:
-- `processes/optimizer/`: DFS lineup optimization
-- `processes/variant_builder/`: Lineup variant generation
+- `processes/optimizer/`: DFS lineup optimization using CP-SAT (OR-Tools) or CBC fallback
+- `processes/variants/`: Lineup variant generation
 - `processes/field_sampler/`: Contest field sampling
-- `processes/gpp_simulator/`: Tournament simulation
+- `processes/gpp_sim/`: Tournament simulation
+- `processes/api/`: FastAPI endpoints for process orchestration
+
+**Frontend/Integration**:
+- `app/`: Next.js dashboard with React components
+- `lib/`: Shared TypeScript utilities (domain logic, state management, UI)
+- `components/`: Reusable UI components (Shadcn/ui, Aceternity)
 
 ## Data Architecture
 
@@ -140,5 +154,18 @@ This is a **monorepo** for NBA Daily Fantasy Sports data pipeline and analysis t
 1. Use `uv sync --extra dev` for complete environment setup
 2. Run full CI pipeline before committing changes
 3. Validate schemas when modifying data contracts
-4. Include tests for new modules in `tests/schemas/`
+4. Include tests for new modules in `tests/`
 5. Follow conventional commit format for all commits
+
+## Testing Strategy
+
+**Python Tests**:
+- **Location**: `tests/` directory with fixtures in `tests/fixtures/`
+- **Framework**: pytest with coverage support
+- **Run specific test**: `pytest tests/test_specific.py -v`
+- **Fixtures**: Use `tests/fixtures/` for test data (CSV samples, YAML mappings)
+
+**Frontend Tests**:
+- **Framework**: Vitest with React Testing Library patterns
+- **Config**: Vitest config in `vitest.config.ts` with path alias `@` for root
+- **Component tests**: Located alongside components or in dedicated test directories

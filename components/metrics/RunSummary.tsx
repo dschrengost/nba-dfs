@@ -1,6 +1,10 @@
 "use client";
 
 import { useRunStore } from "@/lib/state/run-store";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default function RunSummary() {
   const { summary } = useRunStore();
@@ -98,165 +102,228 @@ export default function RunSummary() {
         : Math.round(randomnessPctRaw)
       : 0;
 
+  // Number formatting utilities
+  const formatScore = (n: number | undefined) => 
+    n !== undefined ? new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) : "—";
+  
+  const formatOverlap = (n: number | undefined) => 
+    n !== undefined ? new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) : "—";
+    
+  const formatJaccard = (n: number | undefined) => 
+    n !== undefined ? new Intl.NumberFormat("en-US", { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(n) : "—";
+    
+  const formatMs = (n: number | undefined) => 
+    n !== undefined ? new Intl.NumberFormat("en-US").format(n) + " ms" : "—";
+    
+  const formatInteger = (n: number | undefined) => 
+    n !== undefined ? new Intl.NumberFormat("en-US").format(n) : "—";
+
   const ownershipPenaltyOn =
     typeof opts.ownershipPenalty === "boolean"
       ? opts.ownershipPenalty
       : !!d?.ownership_penalty?.enabled;
 
   return (
-    <div className="text-sm">
-      <div className="flex items-center gap-2">
-        <div className="font-medium">Optimizer Run</div>
+    <TooltipProvider>
+      <div className="space-y-4" data-testid="run-summary">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="font-medium">Optimizer Run</div>
+          <Separator orientation="vertical" className="h-4" />
 
-        {summary.engineUsed ? (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-            Engine: {summary.engineUsed === "cp_sat" ? "CP-SAT" : "CBC"}
-          </span>
-        ) : null}
+          {summary.engineUsed && (
+            <Tooltip>
+              <TooltipTrigger>
+                <Badge variant="secondary" className="text-[10px]" data-testid="engine-badge">
+                  Engine: {summary.engineUsed === "cp_sat" ? "CP-SAT" : "CBC"}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Optimization engine used: {summary.engineUsed === "cp_sat" ? "Google CP-SAT" : "COIN-OR CBC"}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
 
-        {summary.usingFixtureDate ? (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
-            Fixture: {summary.usingFixtureDate}
-          </span>
-        ) : null}
+          {summary.usingFixtureDate && (
+            <Tooltip>
+              <TooltipTrigger>
+                <Badge variant="outline" className="text-[10px]" data-testid="fixture-badge">
+                  Fixture: {summary.usingFixtureDate}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Using fixture data from: {summary.usingFixtureDate}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
 
-        {typeof lamUsed === "number" ? (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-400 border border-sky-500/30">
-            λ={lamUsed}
-          </span>
-        ) : null}
+          {typeof lamUsed === "number" && (
+            <Tooltip>
+              <TooltipTrigger>
+                <Badge variant="secondary" className="text-[10px]" data-testid="lambda-badge">
+                  λ={lamUsed}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Ownership penalty lambda: {lamUsed}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
 
-        {curveLabel ? (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
-            curve={String(curveLabel)}
-          </span>
-        ) : null}
+          {curveLabel && (
+            <Tooltip>
+              <TooltipTrigger>
+                <Badge variant="secondary" className="text-[10px]" data-testid="curve-badge">
+                  curve={String(curveLabel)}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Penalty curve type: {String(curveLabel)}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
 
-        {typeof dropPct === "number" ? (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-fuchsia-500/15 text-fuchsia-400 border border-fuchsia-500/30">
-            drop={(dropPct * 100).toFixed(0)}%
-          </span>
-        ) : null}
+          {typeof dropPct === "number" && (
+            <Tooltip>
+              <TooltipTrigger>
+                <Badge variant="secondary" className="text-[10px]" data-testid="drop-badge">
+                  drop={(dropPct * 100).toFixed(0)}%
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Player pruning drop percentage: {(dropPct * 100).toFixed(1)}%</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
 
-        {typeof uniques === "number" ? (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-400 border border-teal-500/30">
-            uniques={uniques}
-          </span>
-        ) : null}
+          {typeof uniques === "number" && (
+            <Tooltip>
+              <TooltipTrigger>
+                <Badge variant="secondary" className="text-[10px]" data-testid="uniques-badge">
+                  uniques={uniques}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Minimum unique players per lineup: {uniques}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+
+        <Card data-testid="inputs-outputs-card">
+          <CardHeader className="pb-2">
+            <div className="text-xs font-medium">Inputs / Outputs</div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+              <div className="flex justify-between">
+                <dt className="opacity-70">Lineups</dt>
+                <dd className="font-mono tabular-nums">{formatInteger(pool?.lineups)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="opacity-70">Unique players</dt>
+                <dd className="font-mono tabular-nums">{formatInteger(pool?.unique_player_count)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="opacity-70">Avg overlap</dt>
+                <dd className="font-mono tabular-nums">{formatOverlap(pool?.avg_overlap_players)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="opacity-70">Avg Jaccard</dt>
+                <dd className="font-mono tabular-nums">{formatJaccard(pool?.avg_pairwise_jaccard)}</dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="performance-card">
+          <CardContent className="pt-4">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+              <div className="flex justify-between">
+                <dt className="opacity-70">Candidates tried</dt>
+                <dd className="font-mono tabular-nums">{formatInteger(summary.tried)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="opacity-70">Valid lineups</dt>
+                <dd className="font-mono tabular-nums">{formatInteger(summary.valid)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="opacity-70">Best score</dt>
+                <dd className="font-mono tabular-nums">{formatScore(summary.bestScore)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="opacity-70">Elapsed</dt>
+                <dd className="font-mono tabular-nums">{formatMs(summary.elapsedMs)}</dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
+
+        <Card data-testid="settings-card">
+          <CardHeader className="pb-2">
+            <div className="text-xs font-medium">Settings</div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+              <div className="flex justify-between">
+                <dt className="opacity-70">Seed</dt>
+                <dd className="font-mono tabular-nums">{seed ?? "—"}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="opacity-70">Candidates</dt>
+                <dd className="font-mono tabular-nums">{formatInteger(candidates)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="opacity-70">Team cap</dt>
+                <dd className="font-mono tabular-nums">{teamCap ?? "—"}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="opacity-70">Salary cap</dt>
+                <dd className="font-mono tabular-nums">{formatInteger(salaryCap)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="opacity-70">Min salary</dt>
+                <dd className="font-mono tabular-nums">{formatInteger(minSalary) || "0"}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="opacity-70">Randomness %</dt>
+                <dd className="font-mono tabular-nums">{randomnessPct}%</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="opacity-70">Ownership penalty</dt>
+                <dd className="font-mono tabular-nums">{ownershipPenaltyOn ? "on" : "off"}</dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
+
+        {summary.invalidReasons && (
+          <Card data-testid="invalid-reasons-card">
+            <CardHeader className="pb-2">
+              <div className="text-xs font-medium">Invalid reasons</div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                <div className="flex justify-between">
+                  <dt className="opacity-70">Salary</dt>
+                  <dd className="font-mono tabular-nums">{formatInteger(summary.invalidReasons.salary)}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="opacity-70">Slots</dt>
+                  <dd className="font-mono tabular-nums">{formatInteger(summary.invalidReasons.slots)}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="opacity-70">Team cap</dt>
+                  <dd className="font-mono tabular-nums">{formatInteger(summary.invalidReasons.teamcap)}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="opacity-70">Duplicate</dt>
+                  <dd className="font-mono tabular-nums">{formatInteger(summary.invalidReasons.dup)}</dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
+        )}
       </div>
-
-      {pool && (
-        <div className="mt-2" data-testid="pool-metrics">
-          <div className="text-xs font-medium opacity-80">Inputs / Outputs</div>
-          <dl className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-            <div className="flex justify-between">
-              <dt className="opacity-70">Lineups</dt>
-              <dd>{typeof pool.lineups === "number" ? pool.lineups : "—"}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="opacity-70">Unique players</dt>
-              <dd>
-                {typeof pool.unique_player_count === "number"
-                  ? pool.unique_player_count
-                  : "—"}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="opacity-70">Avg overlap (players)</dt>
-              <dd>
-                {typeof pool.avg_overlap_players === "number"
-                  ? pool.avg_overlap_players.toFixed(2)
-                  : "—"}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="opacity-70">Avg Jaccard</dt>
-              <dd>
-                {typeof pool.avg_pairwise_jaccard === "number"
-                  ? pool.avg_pairwise_jaccard.toFixed(3)
-                  : "—"}
-              </dd>
-            </div>
-          </dl>
-        </div>
-      )}
-
-      <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-        <div className="flex justify-between">
-          <dt className="opacity-70">Candidates tried</dt>
-          <dd>{summary.tried}</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="opacity-70">Valid lineups</dt>
-          <dd>{summary.valid}</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="opacity-70">Best score</dt>
-          <dd>{summary.bestScore.toFixed(2)}</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="opacity-70">Elapsed</dt>
-          <dd>{summary.elapsedMs} ms</dd>
-        </div>
-      </dl>
-
-      <div className="mt-3">
-        <div className="text-xs font-medium opacity-80">Settings</div>
-        <dl className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-          <div className="flex justify-between">
-            <dt className="opacity-70">Seed</dt>
-            <dd>{seed ?? "—"}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="opacity-70">Candidates</dt>
-            <dd>{candidates ?? "—"}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="opacity-70">Team cap</dt>
-            <dd>{teamCap ?? "—"}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="opacity-70">Salary cap</dt>
-            <dd>{salaryCap ?? "—"}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="opacity-70">Min salary</dt>
-            <dd>{minSalary ?? 0}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="opacity-70">Randomness %</dt>
-            <dd>{randomnessPct}</dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="opacity-70">Ownership penalty</dt>
-            <dd>{ownershipPenaltyOn ? "on" : "off"}</dd>
-          </div>
-        </dl>
-      </div>
-
-      {summary.invalidReasons ? (
-        <div className="mt-3">
-          <div className="text-xs font-medium opacity-80">Invalid reasons</div>
-          <dl className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-            <div className="flex justify-between">
-              <dt className="opacity-70">Salary</dt>
-              <dd>{summary.invalidReasons.salary}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="opacity-70">Slots</dt>
-              <dd>{summary.invalidReasons.slots}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="opacity-70">Team cap</dt>
-              <dd>{summary.invalidReasons.teamcap}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="opacity-70">Duplicate</dt>
-              <dd>{summary.invalidReasons.dup}</dd>
-            </div>
-          </dl>
-        </div>
-      ) : null}
-    </div>
+    </TooltipProvider>
   );
 }

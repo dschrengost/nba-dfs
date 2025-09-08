@@ -6,8 +6,13 @@ test.describe('Lineup Table Features', () => {
   });
 
   test('should display RunSummary metrics with correct formatting', async ({ page }) => {
-    // Wait for the run summary to be visible
-    await expect(page.getByTestId('run-summary')).toBeVisible();
+    // RunSummary now lives in the Metrics drawer; open it if not visible inline
+    let runSummary = page.getByTestId('run-summary');
+    if (!(await runSummary.isVisible())) {
+      await page.getByRole('button', { name: 'Metrics' }).click();
+      runSummary = page.getByTestId('run-summary');
+    }
+    await expect(runSummary).toBeVisible();
     
     // Check for badge tooltips
     const engineBadge = page.getByTestId('engine-badge');

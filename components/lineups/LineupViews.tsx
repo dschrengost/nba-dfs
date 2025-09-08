@@ -8,7 +8,6 @@ import LineupGrid from "@/components/ui/LineupGrid";
 import { LineupTable } from "./LineupTable";
 import { LineupTableData } from "@/lib/table/columns";
 import { useRosterMap } from "@/hooks/useRosterMap";
-import RunSummary from "@/components/metrics/RunSummary";
 
 interface LineupViewsProps {
   className?: string;
@@ -31,7 +30,7 @@ export function LineupViews({ className }: LineupViewsProps) {
       const ownSum = slots.reduce((sum: number, slot: any) => sum + (slot.own_proj || 0), 0);
       const ownAvg = slots.length > 0 ? ownSum / slots.length : 0;
       const projSum = slots.reduce((sum: number, slot: any) => sum + (slot.proj || slot.proj_fp || 0), 0);
-      const teams = new Set(slots.map((slot: any) => slot.team).filter(Boolean));
+      const teams = new Set<string>(slots.map((slot: any) => String(slot.team || "")).filter(Boolean));
       
       const tableLineup: LineupTableData = {
         lineup_id: lineup.id,
@@ -44,7 +43,7 @@ export function LineupViews({ className }: LineupViewsProps) {
         lev_sum: lineup.lev_sum, // Not available from backend 
         lev_avg: lineup.lev_avg, // Not available from backend
         num_uniques_in_pool: lineup.num_uniques_in_pool, // Not available from backend
-        teams_used: Array.from(teams),
+        teams_used: Array.from(teams) as string[],
         proj_pts_sum: projSum,
         stack_flags: lineup.stack_flags, // Not available from backend
       };
@@ -95,10 +94,6 @@ export function LineupViews({ className }: LineupViewsProps) {
 
   return (
     <div className={`w-full h-full ${className}`} role="region" aria-label="Lineup Results">
-      {/* Compact RunSummary above results for quick context */}
-      <div className="mb-3">
-        <RunSummary />
-      </div>
       <Tabs value={activeView} onValueChange={setActiveView} className="w-full h-full">
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm opacity-70">Lineups</div>
@@ -109,7 +104,7 @@ export function LineupViews({ className }: LineupViewsProps) {
         </div>
 
         <TabsContent value="cards" className="mt-0 h-[calc(100%-3rem)]" data-testid="cards-view">
-          <div className="w-full h-full rounded-md border border-border bg-card/30 p-4">
+          <div className="w-full h-full rounded-lg border border-border/50 bg-card/30 p-4">
             <LineupGrid />
           </div>
         </TabsContent>

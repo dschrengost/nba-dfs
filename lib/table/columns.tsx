@@ -144,32 +144,8 @@ export const createLineupColumns = (rosterMap: Record<string, PlayerInfo> = {}):
       </div>
     ),
   },
-  {
-    accessorKey: "salary_left",
-    header: "Left",
-    size: 60,
-    cell: ({ getValue }) => {
-      const value = getValue();
-      return (
-        <div className="font-mono tabular-nums text-right text-xs" data-testid="salary-left-cell">
-          {value !== undefined ? formatSalary(Number(value)) : "—"}
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: "dup_risk",
-    header: "Dup Risk",
-    size: 80,
-    cell: ({ getValue }) => {
-      const value = getValue();
-      return (
-        <div className="font-mono tabular-nums text-right" data-testid="dup-risk-cell">
-          {value !== undefined ? formatPercentage(Number(value)) : "—"}
-        </div>
-      );
-    },
-  },
+  // Removed per UX: Salary Left column hidden in table
+  // Removed per UX: Dup Risk column hidden in table
   {
     accessorKey: "own_avg",
     header: "Own %",
@@ -201,38 +177,7 @@ export const createLineupColumns = (rosterMap: Record<string, PlayerInfo> = {}):
       );
     },
   },
-  {
-    accessorKey: "teams_used",
-    header: "Teams",
-    size: 60,
-    cell: ({ getValue }) => {
-      const value = getValue();
-      let count: number;
-      let teamsList: string[] = [];
-
-      if (Array.isArray(value)) {
-        count = value.length;
-        teamsList = value;
-      } else if (typeof value === "number") {
-        count = value;
-      } else {
-        count = 0;
-      }
-
-      return (
-        <Tooltip>
-          <TooltipTrigger>
-            <div className="font-mono tabular-nums text-right cursor-default" data-testid="teams-cell">
-              {count}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{teamsList.length > 0 ? `Teams: ${teamsList.join(", ")}` : `${count} teams used`}</p>
-          </TooltipContent>
-        </Tooltip>
-      );
-    },
-  },
+  // Removed per UX: Teams column hidden in table
   // Player position columns
   {
     accessorKey: "PG",
