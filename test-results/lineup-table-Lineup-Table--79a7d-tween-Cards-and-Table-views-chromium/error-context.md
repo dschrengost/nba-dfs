@@ -1,0 +1,60 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - link "Skip to main content" [ref=e2] [cursor=pointer]:
+    - /url: "#content"
+  - generic [ref=e3]:
+    - status [ref=e4]:
+      - generic [ref=e5]: Live Game Status
+      - button "Toggle theme" [ref=e6] [cursor=pointer]:
+        - img
+        - img
+        - generic [ref=e7] [cursor=pointer]: Toggle theme
+    - tablist [ref=e10]:
+      - tab "Optimizer" [selected] [ref=e11] [cursor=pointer]
+      - tab "Variants" [ref=e12] [cursor=pointer]
+      - tab "Field" [ref=e13] [cursor=pointer]
+      - tab "Simulator" [ref=e14] [cursor=pointer]
+    - main [ref=e15]:
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - generic [ref=e18]:
+            - region "Upload Dropzone" [ref=e19]:
+              - generic [ref=e21]: Drag & drop projections.csv / player_ids.csv
+            - heading "Optimizer" [level=1] [ref=e22]
+          - region "Optimizer Grid area" [ref=e24]:
+            - generic [ref=e25]: Optimizer Grid
+            - generic [ref=e27]: No results yet — run an action to populate the grid.
+        - generic [ref=e29]:
+          - generic [ref=e30]: Optimizer Settings
+          - generic [ref=e31]:
+            - generic [ref=e32]:
+              - generic [ref=e33]: Seed
+              - textbox "seed" [ref=e34]: "42"
+            - generic [ref=e35]:
+              - generic [ref=e36]: Min uniques (0-5)
+              - spinbutton [ref=e37]: "1"
+            - generic [ref=e38]:
+              - generic [ref=e39]: N lineups
+              - spinbutton [ref=e40]: "5"
+            - generic [ref=e43]:
+              - generic [ref=e44]: Advanced Settings
+              - button [ref=e45] [cursor=pointer]:
+                - img
+            - generic [ref=e46]:
+              - checkbox "Ownership penalty" [ref=e47]
+              - generic [ref=e48]: Ownership penalty
+            - generic [ref=e49]:
+              - generic [ref=e50]: Projections path
+              - textbox "tests/fixtures/dk/2024-01-15/projections.csv" [ref=e51]
+            - generic [ref=e52]:
+              - generic [ref=e53]: Player IDs path
+              - textbox "tests/fixtures/dk/2024-01-15/player_ids.csv" [ref=e54]
+          - generic [ref=e55]:
+            - button "Run" [ref=e56] [cursor=pointer]
+            - button "Reset" [ref=e57] [cursor=pointer]
+    - button "Open metrics drawer" [ref=e58] [cursor=pointer]: Metrics
+  - region "Notifications alt+T"
+  - alert [ref=e60]
+```

@@ -181,21 +181,47 @@ export const useRunStore = create<State>((set, get) => ({
         throw new Error(data?.error || `Request failed (${res.status})`);
       }
 
-      // Map backend lineups -> UI shape
-      const lineups = (Array.isArray(data.lineups) ? data.lineups : []).map((lu: any) => ({
-        id: String(lu.lineup_id ?? lu.id ?? Math.random().toString(36).slice(2)),
-        slots: (Array.isArray(lu.players) ? lu.players : []).map((pl: any) => ({
-          slot: pl.pos ?? pl.position ?? "UTIL",
-          player_id_dk: pl.dk_id ?? pl.player_id,
-          name: pl.name,
-          team: pl.team,
-          salary: pl.salary,
-          own_proj: pl.own_proj,
-          pos: pl.pos ?? pl.position,
-        })),
-        salary: Number(lu.total_salary ?? 0),
-        score: Number(lu.total_proj ?? 0),
-      }));
+      // Map backend lineups -> UI shape (includes extended metrics from PRP)
+      const lineups = (Array.isArray(data.lineups) ? data.lineups : []).map((lu: any) => {
+        const lineup = {
+          id: String(lu.lineup_id ?? lu.id ?? Math.random().toString(36).slice(2)),
+          slots: (Array.isArray(lu.players) ? lu.players : []).map((pl: any) => ({
+            slot: pl.pos ?? pl.position ?? "UTIL",
+            player_id_dk: pl.dk_id ?? pl.player_id,
+            name: pl.name,
+            team: pl.team,
+            salary: pl.salary,
+            own_proj: pl.own_proj,
+            pos: pl.pos ?? pl.position,
+          })),
+          salary: Number(lu.total_salary ?? lu.salary_used ?? 0),
+          score: Number(lu.total_proj ?? lu.score ?? 0),
+          
+          // Extended metrics for table view
+          lineup_id: String(lu.lineup_id ?? lu.id ?? Math.random().toString(36).slice(2)),
+          salary_used: Number(lu.total_salary ?? lu.salary_used ?? 0),
+          salary_left: lu.salary_left !== undefined ? Number(lu.salary_left) : undefined,
+          dup_risk: lu.dup_risk !== undefined ? Number(lu.dup_risk) : undefined,
+          own_sum: lu.own_sum !== undefined ? Number(lu.own_sum) : undefined,
+          own_avg: lu.own_avg !== undefined ? Number(lu.own_avg) : undefined,
+          lev_sum: lu.lev_sum !== undefined ? Number(lu.lev_sum) : undefined,
+          lev_avg: lu.lev_avg !== undefined ? Number(lu.lev_avg) : undefined,
+          num_uniques_in_pool: lu.num_uniques_in_pool !== undefined ? Number(lu.num_uniques_in_pool) : undefined,
+          teams_used: lu.teams_used ?? undefined,
+          proj_pts_sum: lu.proj_pts_sum !== undefined ? Number(lu.proj_pts_sum) : undefined,
+          stack_flags: lu.stack_flags ?? undefined,
+        };
+        
+        // Add player slots as direct properties for table columns
+        if (Array.isArray(lu.players)) {
+          lu.players.forEach((pl: any) => {
+            const position = pl.pos ?? pl.position ?? "UTIL";
+            (lineup as any)[position] = pl.dk_id ?? pl.player_id;
+          });
+        }
+        
+        return lineup;
+      });
       set({
         status: "done",
         lineups,
@@ -208,6 +234,7 @@ export const useRunStore = create<State>((set, get) => ({
           bestScore: data.summary?.bestScore ?? (lineups.reduce((m: number, l: any) => Math.max(m, Number(l.score || 0)), 0)),
           engineUsed: data.engineUsed ?? data.diagnostics?.engine,
           diagnostics: data.diagnostics,
+          playerMap: data.playerMap ?? data.summary?.playerMap ?? undefined, // Add playerMap for roster mapping
         },
       });
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import PageContainer from "../../../components/ui/PageContainer";
 import LineupGridPlaceholder, { type GridMode } from "../../../components/ui/LineupGridPlaceholder";
-import LineupGrid from "@/components/ui/LineupGrid";
+import { LineupViews } from "@/components/lineups/LineupViews";
 import { SKELETON_MS } from "../../../lib/ui/constants";
 import { prefersReducedMotion } from "../../../lib/ui/a11y";
 
@@ -19,7 +19,7 @@ export default function OptimizerPage() {
   return (
     <PageContainer title="Optimizer" gridMode={mode} onGridModeChange={onGridModeChange}>
       {mode === "loaded" ? (
-        <LineupGrid />
+        <LineupViews />
       ) : (
         <LineupGridPlaceholder label="Optimizer Grid" mode={mode} />
       )}
