@@ -22,3 +22,7 @@ yarn-error.log*
 
 # ---- Docs you don't want in repo (adjust as needed) ----
 
+
+# Playwright artifacts
+playwright-report/
+test-results/
