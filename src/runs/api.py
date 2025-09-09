@@ -5,23 +5,22 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, cast
 
 try:
     # Python 3.9+ zoneinfo
-    from zoneinfo import ZoneInfo  # type: ignore
+    from zoneinfo import ZoneInfo
 except Exception:  # pragma: no cover
-    ZoneInfo = None  # type: ignore
+    ZoneInfo = None  # type: ignore[misc, assignment]
 
 
-NY_TZ = ZoneInfo("America/New_York") if ZoneInfo else None
+NY_TZ = ZoneInfo("America/New_York") if ZoneInfo is not None else None
 
 
-def gen_slate_key(dt: Optional[datetime] = None) -> str:
+def gen_slate_key(dt: datetime | None = None) -> str:
     """Generate a slate key in YY-MM-DD_HHMMSS using America/New_York local time."""
     if dt is None:
         now = datetime.now(timezone.utc)
@@ -35,7 +34,9 @@ def gen_slate_key(dt: Optional[datetime] = None) -> str:
 
 def _git_branch() -> str:
     try:
-        out = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], stderr=subprocess.DEVNULL)
+        out = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"], stderr=subprocess.DEVNULL
+        )
         b = out.decode("utf-8").strip()
         b = re.sub(r"[^A-Za-z0-9_.-]", "-", b)
         return b or "local"
@@ -43,7 +44,7 @@ def _git_branch() -> str:
         return "local"
 
 
-def gen_run_id(dt: Optional[datetime] = None, branch: Optional[str] = None) -> str:
+def gen_run_id(dt: datetime | None = None, branch: str | None = None) -> str:
     ts = gen_slate_key(dt)
     slug = (branch or _git_branch())[:24]
     return f"{ts}__{slug}"
@@ -52,7 +53,7 @@ def gen_run_id(dt: Optional[datetime] = None, branch: Optional[str] = None) -> s
 def _safe_write(path: Path, data: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    if isinstance(data, (dict, list)):
+    if isinstance(data, dict | list):
         tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False))
     elif isinstance(data, str):
         tmp.write_text(data)
@@ -72,16 +73,21 @@ class SaveResult:
 def save_run(
     slate_key: str,
     module: str,
-    meta: Dict[str, Any],
-    artifacts: Optional[Dict[str, Any]] = None,
+    meta: dict[str, Any],
+    artifacts: dict[str, Any] | None = None,
+    inputs_hash: dict[str, Any] | None = None,
+    validation_metrics: dict[str, Any] | None = None,
     keep_last: int = 10,
 ) -> SaveResult:
     """
-    Persist a run under /runs/<SLATE_KEY>/<module>/<RUN_ID>/ with atomic write semantics.
-    - Writes run_meta.json and optional artifacts (lineups.json, diagnostics.json, summary.json)
+    Persist a run under `/runs/<SLATE>/<module>/<RUN_ID>/` with atomic semantics.
+    - Writes `run_meta.json` and optional `inputs_hash.json` and
+      `validation_metrics.json`.
+    - Optional artifacts (lineups.json, diagnostics.json, summary.json)
     - Evicts oldest directories to keep at most `keep_last` runs
     """
-    # Respect explicit project root if provided (ensures consistent location when invoked from various cwd)
+    # Respect explicit project root if provided to ensure consistent location when
+    # invoked from various working directories
     project_root = os.environ.get("PROJECT_ROOT")
     base_runs = Path(project_root) / "runs" if project_root else Path("runs")
     root = base_runs / slate_key / module
@@ -99,14 +105,21 @@ def save_run(
     meta.setdefault("module", module)
     meta.setdefault("run_id", run_id)
     meta.setdefault("slate_key", slate_key)
-    meta.setdefault("created_at", datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
+    meta.setdefault(
+        "created_at", datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    )
     # reference artifact paths if we are writing them
     if artifacts and isinstance(artifacts, dict):
         art_ref = meta.setdefault("artifacts", {})
         for k, v in list(artifacts.items()):
-            if k.endswith("_json") and isinstance(v, (dict, list)):
+            if k.endswith("_json") and isinstance(v, dict | list):
                 _safe_write(artifacts_dir / k, v)
                 art_ref[k] = f"artifacts/{k}"
+
+    if inputs_hash is not None:
+        _safe_write(tmp_dir / "inputs_hash.json", inputs_hash)
+    if validation_metrics is not None:
+        _safe_write(tmp_dir / "validation_metrics.json", validation_metrics)
 
     _safe_write(tmp_dir / "run_meta.json", meta)
 
@@ -120,7 +133,9 @@ def save_run(
         # best-effort; do not fail the save on eviction issues
         pass
 
-    return SaveResult(slate_key=slate_key, module=module, run_id=run_id, run_dir=final_dir)
+    return SaveResult(
+        slate_key=slate_key, module=module, run_id=run_id, run_dir=final_dir
+    )
 
 
 def _evict_oldest(root: Path, keep_last: int) -> None:
@@ -128,9 +143,12 @@ def _evict_oldest(root: Path, keep_last: int) -> None:
         return
     if not root.exists():
         return
-    run_dirs = [p for p in root.iterdir() if p.is_dir() and not p.name.startswith("__tmp__")]
+    run_dirs = [
+        p for p in root.iterdir() if p.is_dir() and not p.name.startswith("__tmp__")
+    ]
+
     # sort by created_at in meta if present, else mtime
-    def _key(p: Path) -> Tuple[float, str]:
+    def _key(p: Path) -> tuple[float, str]:
         meta_p = p / "run_meta.json"
         ts = p.stat().st_mtime
         try:
@@ -151,24 +169,24 @@ def _evict_oldest(root: Path, keep_last: int) -> None:
             pass
 
 
-def get_run(slate_key: str, module: str, run_id: str) -> Dict[str, Any]:
+def get_run(slate_key: str, module: str, run_id: str) -> dict[str, Any]:
     base = Path("runs") / slate_key / module / run_id
     meta_p = base / "run_meta.json"
     if not meta_p.exists():
         raise FileNotFoundError(str(meta_p))
-    return json.loads(meta_p.read_text())
+    return cast(dict[str, Any], json.loads(meta_p.read_text()))
 
 
-def list_runs(slate_key: str, module: str, limit: int = 10) -> List[Dict[str, Any]]:
+def list_runs(slate_key: str, module: str, limit: int = 10) -> list[dict[str, Any]]:
     base = Path("runs") / slate_key / module
     if not base.exists():
         return []
-    rows: List[Dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
     for p in base.iterdir():
         if not p.is_dir() or p.name.startswith("__tmp__"):
             continue
         meta_p = p / "run_meta.json"
-        meta: Dict[str, Any]
+        meta: dict[str, Any]
         try:
             meta = json.loads(meta_p.read_text()) if meta_p.exists() else {}
         except Exception:
@@ -180,15 +198,17 @@ def list_runs(slate_key: str, module: str, limit: int = 10) -> List[Dict[str, An
                 created_ts = dt.timestamp()
             except Exception:
                 pass
-        rows.append({
-            "run_id": p.name,
-            "slate_key": slate_key,
-            "module": module,
-            "created_at": meta.get("created_at"),
-            "path": str(p),
-            "meta": meta or None,
-            "_ts": created_ts,
-        })
+        rows.append(
+            {
+                "run_id": p.name,
+                "slate_key": slate_key,
+                "module": module,
+                "created_at": meta.get("created_at"),
+                "path": str(p),
+                "meta": meta or None,
+                "_ts": created_ts,
+            }
+        )
     rows.sort(key=lambda r: (r.get("_ts", 0.0), r.get("run_id", "")), reverse=True)
     for r in rows:
         r.pop("_ts", None)
