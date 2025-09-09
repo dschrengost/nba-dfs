@@ -102,3 +102,30 @@ def test_invalid_lineup_raises(tmp_path: Path) -> None:
     )
     with pytest.raises(ValueError, match="Invalid lineup"):
         build_variant_catalog(params)
+
+
+def test_build_variant_catalog_reorders_slots(tmp_path: Path) -> None:
+    pool_path = _make_player_pool(tmp_path / "players.csv")
+    lineup = [
+        ("SG", "p1"),
+        ("PG", "p0"),
+        ("SF", "p2"),
+        ("PF", "p3"),
+        ("C", "p4"),
+        ("G", "p5"),
+        ("F", "p6"),
+        ("UTIL", "p7"),
+    ]
+    opt_path = _write_optimizer_run(tmp_path / "optimizer_run.jsonl", lineup)
+    out_path = tmp_path / "variant_catalog.jsonl"
+
+    params = BuildParams(
+        optimizer_run=opt_path,
+        player_pool=pool_path,
+        output_path=out_path,
+        slate_id="20250101_NBA",
+    )
+    build_variant_catalog(params)
+
+    rec = json.loads(out_path.read_text().strip())
+    assert rec["lineup"] == [f"p{i}" for i in range(8)]
