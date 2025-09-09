@@ -10,9 +10,7 @@ def _normalize_players(player_ids: str) -> str:
     return "|".join(sorted(players))
 
 
-def run_sim(
-    lineups: pd.DataFrame, contest: pd.DataFrame
-) -> tuple[pd.DataFrame, dict[str, Any]]:
+def run_sim(lineups: pd.DataFrame, contest: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Run a minimal deterministic contest simulation.
 
     Parameters

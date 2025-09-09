@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -9,17 +9,15 @@ import pandas as pd
 from processes.optimizer import adapter as opt
 
 
-def _stub_ok(
-    df: pd.DataFrame, constraints: dict[str, Any], seed: int, site: str, engine: str
-):
+def _stub_ok(df: pd.DataFrame, constraints: dict[str, Any], seed: int, site: str, engine: str):
     slots = ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    l = {
+    lineup = {
         "players": list(df["player_id"].head(8)),
         "dk_positions_filled": [{"slot": s, "position": s} for s in slots],
         "total_salary": int(df["salary"].head(8).sum()),
         "proj_fp": float(df["proj_fp"].head(8).sum()),
     }
-    return [l]
+    return [lineup]
 
 
 def test_run_id_determinism(tmp_path: Path, monkeypatch):
@@ -27,7 +25,7 @@ def test_run_id_determinism(tmp_path: Path, monkeypatch):
     class FakeDT:
         @staticmethod
         def now(tz=None):
-            return datetime(2025, 11, 1, 18, 0, 0, tzinfo=timezone.utc)
+            return datetime(2025, 11, 1, 18, 0, 0, tzinfo=UTC)
 
     monkeypatch.setattr(opt, "datetime", FakeDT)
 

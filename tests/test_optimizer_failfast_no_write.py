@@ -15,8 +15,7 @@ def _stub_bad_lineup(
     # Return a single lineup with 7 players (invalid)
     players = list(df["player_id"].head(7))
     dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F"]  # missing UTIL
+        {"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F"]  # missing UTIL
     ]
     return [
         {
@@ -49,7 +48,7 @@ def test_failfast_no_write(tmp_path: Path, monkeypatch):
     out_root = tmp_path / "out"
     out_root.mkdir(parents=True, exist_ok=True)
 
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         opt.run_adapter(
             slate_id=slate_id,
             site="DK",

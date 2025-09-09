@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -27,7 +27,7 @@ class BuildParams:
 
 
 def _utc_now_iso() -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ms = int(now.microsecond / 1000)
     return f"{now.strftime('%Y-%m-%dT%H:%M:%S')}.{ms:03d}Z"
 

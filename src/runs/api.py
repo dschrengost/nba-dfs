@@ -6,7 +6,7 @@ import re
 import shutil
 import subprocess
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -23,9 +23,9 @@ NY_TZ = ZoneInfo("America/New_York") if ZoneInfo is not None else None
 def gen_slate_key(dt: datetime | None = None) -> str:
     """Generate a slate key in YY-MM-DD_HHMMSS using America/New_York local time."""
     if dt is None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
     else:
-        now = dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        now = dt if dt.tzinfo else dt.replace(tzinfo=UTC)
     if NY_TZ:
         now = now.astimezone(NY_TZ)
     # YY-MM-DD_HHMMSS
@@ -105,9 +105,7 @@ def save_run(
     meta.setdefault("module", module)
     meta.setdefault("run_id", run_id)
     meta.setdefault("slate_key", slate_key)
-    meta.setdefault(
-        "created_at", datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    )
+    meta.setdefault("created_at", datetime.now(UTC).isoformat().replace("+00:00", "Z"))
     # reference artifact paths if we are writing them
     if artifacts and isinstance(artifacts, dict):
         art_ref = meta.setdefault("artifacts", {})
@@ -133,9 +131,7 @@ def save_run(
         # best-effort; do not fail the save on eviction issues
         pass
 
-    return SaveResult(
-        slate_key=slate_key, module=module, run_id=run_id, run_dir=final_dir
-    )
+    return SaveResult(slate_key=slate_key, module=module, run_id=run_id, run_dir=final_dir)
 
 
 def _evict_oldest(root: Path, keep_last: int) -> None:
@@ -143,9 +139,7 @@ def _evict_oldest(root: Path, keep_last: int) -> None:
         return
     if not root.exists():
         return
-    run_dirs = [
-        p for p in root.iterdir() if p.is_dir() and not p.name.startswith("__tmp__")
-    ]
+    run_dirs = [p for p in root.iterdir() if p.is_dir() and not p.name.startswith("__tmp__")]
 
     # sort by created_at in meta if present, else mtime
     def _key(p: Path) -> tuple[float, str]:
@@ -222,7 +216,7 @@ def prune_runs(slate_key: str, module: str, retention_days: int = 14) -> int:
     base = Path("runs") / slate_key / module
     if not base.exists():
         return 0
-    cutoff = datetime.now(timezone.utc).timestamp() - retention_days * 86400.0
+    cutoff = datetime.now(UTC).timestamp() - retention_days * 86400.0
     removed = 0
     for p in base.iterdir():
         if not p.is_dir() or p.name.startswith("__tmp__"):

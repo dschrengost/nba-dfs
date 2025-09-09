@@ -14,10 +14,7 @@ def test_bad_yaml_config_message(tmp_path: Path):
     # Prepare minimal valid optimizer lineups file
     import pandas as pd
 
-    dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    ]
+    dk_pos = [{"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]]
     players = [f"p{i}" for i in range(8)]
     base = {
         "run_id": "rid",

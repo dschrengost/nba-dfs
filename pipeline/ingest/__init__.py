@@ -2,4 +2,3 @@
 
 Exposes a thin CLI entrypoint via `python -m pipeline.ingest`.
 """
-

@@ -23,10 +23,7 @@ def _stub_run(parent_df, knobs: dict[str, Any], seed: int):
 
 def test_manifest_and_registry_written(monkeypatch, tmp_path: Path):
     slate_id = "20251101_NBA"
-    dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    ]
+    dk_pos = [{"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]]
     players = [f"p{i}" for i in range(8)]
     base = {
         "run_id": "rid",

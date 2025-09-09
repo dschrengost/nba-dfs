@@ -4,7 +4,7 @@ import json
 import logging
 import tempfile
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -38,12 +38,10 @@ def health() -> dict[str, Any]:
     out = {
         "ok": True,
         "version": "0.1.0",
-        "time": datetime.now(timezone.utc).isoformat(),
+        "time": datetime.now(UTC).isoformat(),
     }
     dt = time.time() - t0
-    logger.info(
-        json.dumps({"event": "api_exit", "endpoint": "/health", "dt_s": round(dt, 6)})
-    )
+    logger.info(json.dumps({"event": "api_exit", "endpoint": "/health", "dt_s": round(dt, 6)}))
     return out
 
 
@@ -94,9 +92,7 @@ def run_orchestrator(
             run_id = str(s.get("run_id"))
             stages_map[name] = run_id
             if name == "sim" and s.get("primary_output"):
-                metrics_path = Path(str(s["primary_output"])).with_name(
-                    "metrics.parquet"
-                )
+                metrics_path = Path(str(s["primary_output"])).with_name("metrics.parquet")
                 _METRICS[run_id] = str(metrics_path)
         _RUNS[bundle_id] = {"bundle_path": str(bundle_path)}
 
@@ -162,9 +158,7 @@ def get_run(run_id: str, response: Response) -> BundleManifest | ErrorResponse:
     "/metrics/{run_id}",
     response_model=list[dict[str, Any]] | ErrorResponse,
 )  # type: ignore[misc]
-def get_metrics(
-    run_id: str, response: Response
-) -> list[dict[str, Any]] | ErrorResponse:
+def get_metrics(run_id: str, response: Response) -> list[dict[str, Any]] | ErrorResponse:
     t0 = time.time()
     logger.info(
         json.dumps(
@@ -228,9 +222,7 @@ def list_runs(
         df = pd.read_parquet(reg_path)
     except Exception as e:  # pragma: no cover
         response.status_code = 500
-        return ErrorResponse(
-            error="internal_error", detail=f"failed to read registry: {e}"
-        )
+        return ErrorResponse(error="internal_error", detail=f"failed to read registry: {e}")
     rows = cast(list[dict[str, Any]], df.to_dict(orient="records"))
     models = [RunRegistryRow.model_validate(r) for r in rows]
     out = RunsListResponse(runs=models)

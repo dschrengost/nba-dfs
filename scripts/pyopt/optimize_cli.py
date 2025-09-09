@@ -15,10 +15,14 @@ Contract (stdin):
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
-from typing import Any, Dict, List
-import os
+from collections import Counter
+from itertools import combinations
+from typing import Any
+
+import pandas as pd
 
 # Ensure repo root is on sys.path so `processes.*` is importable when running from scripts/
 _HERE = os.path.dirname(__file__)
@@ -27,10 +31,6 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 # Ensure downstream helpers resolve paths relative to repo root
 os.environ.setdefault("PROJECT_ROOT", _ROOT)
-
-import pandas as pd
-from collections import Counter
-from itertools import combinations
 
 
 def _stderr(msg: str) -> None:
@@ -74,12 +74,13 @@ def main() -> int:
     seed = int(req.get("seed", 42))
 
     # Build projections DataFrame from either inline `players` OR a file path
-    players: List[Dict[str, Any]] = req.get("players") or []
+    players: list[dict[str, Any]] = req.get("players") or []
     projections_path = req.get("projectionsPath")
 
     def _norm_cols(df_in: pd.DataFrame) -> pd.DataFrame:
         df_in.columns = (
-            df_in.columns.str.strip().str.lower()
+            df_in.columns.str.strip()
+            .str.lower()
             .str.replace("%", "", regex=False)
             .str.replace(" ", "_", regex=False)
         )
@@ -92,7 +93,7 @@ def main() -> int:
         return None
 
     if players:
-        rows: List[Dict[str, Any]] = []
+        rows: list[dict[str, Any]] = []
         for p in players:
             pos = p.get("position") or ""
             if isinstance(pos, list):
@@ -100,9 +101,7 @@ def main() -> int:
             name = p.get("name") or p.get("player_name") or ""
             dk_id = p.get("dk_id") or p.get("player_id_dk") or p.get("player_id")
             # accept Own%/own/ownership keys too if present
-            own_raw = (
-                p.get("own_proj", p.get("ownership", p.get("own", p.get("ownp"))))
-            )
+            own_raw = p.get("own_proj", p.get("ownership", p.get("own", p.get("ownp"))))
             rows.append(
                 {
                     "name": name,
@@ -150,15 +149,20 @@ def main() -> int:
 
         if not all([c_name, c_team, c_pos, c_sal, c_proj]):
             missing = [
-                x for x, c in [
+                x
+                for x, c in [
                     ("name", c_name),
                     ("team", c_team),
                     ("position", c_pos),
                     ("salary", c_sal),
                     ("proj_fp", c_proj),
-                ] if c is None
+                ]
+                if c is None
             ]
-            out = {"ok": False, "error": f"Missing required columns after normalization: {missing}"}
+            out = {
+                "ok": False,
+                "error": f"Missing required columns after normalization: {missing}",
+            }
             sys.stdout.write(json.dumps(out))
             return 0
 
@@ -168,24 +172,31 @@ def main() -> int:
                 return "/".join([str(s).upper() for s in v])
             return str(v)
 
-        df = pd.DataFrame({
-            "name": df_raw[c_name],
-            "team": df_raw[c_team].astype(str).str.upper(),
-            "position": df_raw[c_pos].apply(_pos_to_str),
-            "salary": pd.to_numeric(df_raw[c_sal], errors="coerce").fillna(0).astype(int),
-            "proj_fp": pd.to_numeric(df_raw[c_proj], errors="coerce").fillna(0.0).astype(float),
-            "own_proj": pd.to_numeric(
-                df_raw[c_own], errors="coerce"
-            ).map(_normalize_own) if c_own else None,
-            "dk_id": df_raw[c_dkid].astype(str) if c_dkid else None,
-        })
+        df = pd.DataFrame(
+            {
+                "name": df_raw[c_name],
+                "team": df_raw[c_team].astype(str).str.upper(),
+                "position": df_raw[c_pos].apply(_pos_to_str),
+                "salary": pd.to_numeric(df_raw[c_sal], errors="coerce").fillna(0).astype(int),
+                "proj_fp": pd.to_numeric(df_raw[c_proj], errors="coerce").fillna(0.0).astype(float),
+                "own_proj": (
+                    pd.to_numeric(df_raw[c_own], errors="coerce").map(_normalize_own)
+                    if c_own
+                    else None
+                ),
+                "dk_id": df_raw[c_dkid].astype(str) if c_dkid else None,
+            }
+        )
 
         # if no ownership column found, fill with None (later becomes 0.0 if penalty off)
         if "own_proj" not in df or df["own_proj"] is None:
             df["own_proj"] = None
 
     else:
-        out = {"ok": False, "error": "No players provided and no projectionsPath specified."}
+        out = {
+            "ok": False,
+            "error": "No players provided and no projectionsPath specified.",
+        }
         sys.stdout.write(json.dumps(out))
         return 0
 
@@ -221,19 +232,23 @@ def main() -> int:
             cols_pid = set(_pid.columns)
             c_name = _pick(cols_pid, "name", "player", "player_name")
             c_team = _pick(cols_pid, "team", "teamabbrev")
-            c_pos  = _pick(cols_pid, "position", "pos")
+            c_pos = _pick(cols_pid, "position", "pos")
             c_dkid = _pick(cols_pid, "dk_id", "player_id_dk", "player_id", "id")
             if not c_dkid:
-                _stderr("[playerIds] No DK ID column found (expected one of: dk_id, player_id_dk, player_id, id)")
+                _stderr(
+                    "[playerIds] No DK ID column found (expected one of: dk_id, player_id_dk, player_id, id)"
+                )
             else:
                 # Normalize slim IDs table
                 pid_cols = {"dk_id": _pid[c_dkid].astype(str)}
-                if c_name: pid_cols["name"] = _pid[c_name].astype(str)
+                if c_name:
+                    pid_cols["name"] = _pid[c_name].astype(str)
                 if c_team:
                     # teamabbrev -> TEAM
                     tseries = _pid[c_team].astype(str).str.upper()
                     pid_cols["team"] = tseries
-                if c_pos:  pid_cols["position"] = _pid[c_pos].astype(str)
+                if c_pos:
+                    pid_cols["position"] = _pid[c_pos].astype(str)
                 player_ids_df = pd.DataFrame(pid_cols)
 
                 # Best-effort merge into df on (name, team)
@@ -241,14 +256,27 @@ def main() -> int:
                     # ensure df team uppercase for the join
                     if "team" in df.columns:
                         df["team"] = df["team"].astype(str).str.upper()
-                    join_keys = [k for k in ["name", "team"] if k in df.columns and k in player_ids_df.columns]
+                    join_keys = [
+                        k
+                        for k in ["name", "team"]
+                        if k in df.columns and k in player_ids_df.columns
+                    ]
                     if join_keys:
-                        pid_slim = player_ids_df.drop_duplicates(subset=["dk_id"] + join_keys if "dk_id" in player_ids_df.columns else join_keys)
+                        pid_slim = player_ids_df.drop_duplicates(
+                            subset=(
+                                ["dk_id"] + join_keys
+                                if "dk_id" in player_ids_df.columns
+                                else join_keys
+                            )
+                        )
                         df = df.merge(pid_slim, on=join_keys, how="left", suffixes=("", "_pid"))
                         # If we already had a dk_id col, prefer non-null union; else adopt merged dk_id
                         if "dk_id" in df.columns and "dk_id_pid" in df.columns:
                             df["dk_id"] = df["dk_id"].where(df["dk_id"].notna(), df["dk_id_pid"])
-                            df = df.drop(columns=[c for c in df.columns if c.endswith("_pid")], errors="ignore")
+                            df = df.drop(
+                                columns=[c for c in df.columns if c.endswith("_pid")],
+                                errors="ignore",
+                            )
                         elif "dk_id_pid" in df.columns:
                             df = df.rename(columns={"dk_id_pid": "dk_id"})
 
@@ -267,14 +295,12 @@ def main() -> int:
         return 0
 
     # Build constraints (allow passthrough dict from caller)
-    cons_in: Dict[str, Any] = req.get("constraints") or {}
+    cons_in: dict[str, Any] = req.get("constraints") or {}
     # Map common caller knobs if present
     max_salary = cons_in.get("max_salary") or cons_in.get("salary_cap") or None
     min_salary = cons_in.get("min_salary")
     team_cap = (
-        cons_in.get("global_team_limit")
-        or cons_in.get("team_cap")
-        or cons_in.get("maxPerTeam")
+        cons_in.get("global_team_limit") or cons_in.get("team_cap") or cons_in.get("maxPerTeam")
     )
     N_lineups = int(cons_in.get("N_lineups") or cons_in.get("n_lineups") or 1)
     unique_players = int(cons_in.get("unique_players") or cons_in.get("uniques") or 0)
@@ -301,14 +327,16 @@ def main() -> int:
 
     try:
         from contextlib import redirect_stdout
+
         # Redirect noisy prints from legacy backend to stderr so stdout stays JSON-only
         with redirect_stdout(sys.stderr):
             lineups, diagnostics = optimize_with_diagnostics(
                 df, cons, int(seed), site, player_ids_df=player_ids_df, engine=engine
             )
         elapsed_ms = int(round((time.time() - t0) * 1000))
+
         # Convert to JSON-able structure
-        def pl2json(pl) -> Dict[str, Any]:
+        def pl2json(pl) -> dict[str, Any]:
             return {
                 "player_id": pl.player_id,
                 "name": pl.name,
@@ -353,8 +381,8 @@ def main() -> int:
                 exposures = {pid: c / n_lineups for pid, c in counts.items()}
                 return {
                     "lineups": len(lid_lists),
-                    "avg_overlap_players": (sum(overlaps) / len(overlaps)) if overlaps else 0.0,
-                    "avg_pairwise_jaccard": (sum(jaccards) / len(jaccards)) if jaccards else 0.0,
+                    "avg_overlap_players": ((sum(overlaps) / len(overlaps)) if overlaps else 0.0),
+                    "avg_pairwise_jaccard": ((sum(jaccards) / len(jaccards)) if jaccards else 0.0),
                     "unique_player_count": len(set().union(*sets)) if sets else 0,
                     "exposures": exposures,
                 }
@@ -371,6 +399,7 @@ def main() -> int:
 
         # Helper: scrub JSON for non-finite numbers (Infinity/NaN) so JS JSON.parse succeeds
         import math
+
         def _clean_nans(obj):
             if isinstance(obj, float):
                 return obj if math.isfinite(obj) else None
@@ -399,7 +428,11 @@ def main() -> int:
                 diag_safe["constraints"] = constraints_echo
                 diag_safe["constraints_raw"] = cons_in
                 # Ensure penalty snapshot includes curve_type and weight if available
-                pen = (constraints_echo or {}).get("ownership_penalty") if isinstance(constraints_echo, dict) else None
+                pen = (
+                    (constraints_echo or {}).get("ownership_penalty")
+                    if isinstance(constraints_echo, dict)
+                    else None
+                )
                 if pen:
                     oe = diag_safe.setdefault("ownership_penalty", {})
                     if "curve_type" not in oe and "curve_type" in pen:
@@ -429,7 +462,7 @@ def main() -> int:
                 "invalidReasons": {"salary": 0, "slots": 0, "teamcap": 0, "dup": 0},
                 # Keep original constraints echo for UI convenience
                 "optionsUsed": cons_in,
-              },
+            },
             "diagnostics": diag_safe,
         }
 
@@ -439,6 +472,7 @@ def main() -> int:
             if not slate_key:
                 try:
                     from src.runs.api import gen_slate_key  # type: ignore
+
                     slate_key = gen_slate_key()
                 except Exception:
                     slate_key = time.strftime("%y-%m-%d_%H%M%S", time.gmtime())
@@ -451,9 +485,21 @@ def main() -> int:
                 "params": {
                     "uniques": int(cons_in.get("unique_players", 0)),
                     "ownership_penalty": {
-                        "enabled": bool((constraints_echo or {}).get("ownership_penalty", {}).get("enabled", False)),
-                        "lambda": float((constraints_echo or {}).get("ownership_penalty", {}).get("weight_lambda", 0.0)),
-                        "curve": str((constraints_echo or {}).get("ownership_penalty", {}).get("curve_type", "linear")),
+                        "enabled": bool(
+                            (constraints_echo or {})
+                            .get("ownership_penalty", {})
+                            .get("enabled", False)
+                        ),
+                        "lambda": float(
+                            (constraints_echo or {})
+                            .get("ownership_penalty", {})
+                            .get("weight_lambda", 0.0)
+                        ),
+                        "curve": str(
+                            (constraints_echo or {})
+                            .get("ownership_penalty", {})
+                            .get("curve_type", "linear")
+                        ),
                     },
                 },
                 "diagnostics": {"pool": pool_diag},
@@ -466,7 +512,14 @@ def main() -> int:
             }
 
             from src.runs.api import save_run  # type: ignore
-            saved = save_run(slate_key=slate_key, module="optimizer", meta=meta, artifacts=artifacts, keep_last=10)
+
+            saved = save_run(
+                slate_key=slate_key,
+                module="optimizer",
+                meta=meta,
+                artifacts=artifacts,
+                keep_last=10,
+            )
             out["run_id"] = saved.run_id
             out["slate_key"] = saved.slate_key
             out["run_path"] = str(saved.run_dir)

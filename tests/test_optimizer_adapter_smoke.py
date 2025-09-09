@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+import pytest
 
 from processes.optimizer import adapter as opt
 
@@ -13,10 +14,7 @@ def _stub_run_optimizer(
 ):
     # Produce 2 trivial lineups using the first 8 players twice, swapping UTIL
     players = list(df["player_id"].head(8))
-    dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    ]
+    dk_pos = [{"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]]
     l1 = {
         "players": players,
         "dk_positions_filled": dk_pos,
@@ -33,6 +31,7 @@ def _stub_run_optimizer(
     return [l1, l2], {"note": "stub"}
 
 
+@pytest.mark.smoke
 def test_smoke_adapter_end_to_end(tmp_path: Path, monkeypatch):
     # Arrange minimal projections
     slate_id = "20251101_NBA"

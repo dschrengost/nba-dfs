@@ -36,10 +36,7 @@ def _stub_run_variants(parent_df: pd.DataFrame, knobs: dict[str, Any], seed: int
 def test_smoke_adapter_end_to_end(tmp_path: Path, monkeypatch):
     slate_id = "20251101_NBA"
     # Prepare optimizer lineups parquet
-    dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    ]
+    dk_pos = [{"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]]
     players = [f"p{i}" for i in range(8)]
     base = {
         "run_id": "20251101_180000_deadbee",

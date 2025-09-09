@@ -24,10 +24,7 @@ def _stub_bad_variant(parent_df: pd.DataFrame, knobs, seed: int):
 
 def test_failfast_no_write(tmp_path: Path, monkeypatch):
     slate_id = "20251101_NBA"
-    dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    ]
+    dk_pos = [{"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]]
     players = [f"p{i}" for i in range(8)]
     base = {
         "run_id": "20251101_180000_deadbee",

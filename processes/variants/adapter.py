@@ -6,7 +6,7 @@ import json
 import os
 import sys
 from collections.abc import Callable, Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -26,7 +26,7 @@ DK_SLOTS_ORDER = ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
 
 
 def _utc_now_iso() -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ms = int(now.microsecond / 1000)
     return f"{now.strftime('%Y-%m-%dT%H:%M:%S')}.{ms:03d}Z"
 
@@ -88,9 +88,7 @@ def _load_variant() -> RunVariantFn:
     )
 
 
-def load_config(
-    config_path: Path | None, inline_kv: Sequence[str] | None = None
-) -> dict[str, Any]:
+def load_config(config_path: Path | None, inline_kv: Sequence[str] | None = None) -> dict[str, Any]:
     cfg: dict[str, Any] = {}
     if config_path:
         text = config_path.read_text(encoding="utf-8")
@@ -140,9 +138,7 @@ def map_config_to_knobs(config: Mapping[str, Any]) -> dict[str, Any]:
     return c
 
 
-def export_csv_row(
-    players: Sequence[str], dk_positions_filled: Sequence[Mapping[str, Any]]
-) -> str:
+def export_csv_row(players: Sequence[str], dk_positions_filled: Sequence[Mapping[str, Any]]) -> str:
     slot_to_player: dict[str, str] = {}
     for idx, slot in enumerate(dk_positions_filled):
         slot_to_player[str(slot.get("slot"))] = str(players[idx])
@@ -169,14 +165,10 @@ def _find_input_optimizer_lineups(
         return explicit_input
     # If a specific run_id provided, use that run dir
     if from_run:
-        candidate = (
-            out_root / "runs" / "optimizer" / from_run / "artifacts" / "lineups.parquet"
-        )
+        candidate = out_root / "runs" / "optimizer" / from_run / "artifacts" / "lineups.parquet"
         if candidate.exists():
             return candidate
-        raise FileNotFoundError(
-            f"--from-run provided but lineups not found: {candidate}"
-        )
+        raise FileNotFoundError(f"--from-run provided but lineups not found: {candidate}")
     # Otherwise, consult registry for latest optimizer run for this slate
     registry_path = out_root / "registry" / "runs.parquet"
     if registry_path.exists():
@@ -188,9 +180,7 @@ def _find_input_optimizer_lineups(
                 f"Registry missing required columns {missing}. "
                 "Re-run optimizer to populate registry."
             )
-        filt = df[
-            (df.get("run_type") == "optimizer") & (df.get("slate_id") == slate_id)
-        ]
+        filt = df[(df.get("run_type") == "optimizer") & (df.get("slate_id") == slate_id)]
         if not filt.empty:
             # pick latest by created_ts lexicographically (ISO format)
             idx = filt["created_ts"].astype(str).idxmax()
@@ -209,8 +199,7 @@ def _find_input_optimizer_lineups(
             if candidate.exists():
                 return candidate
     raise FileNotFoundError(
-        "No optimizer lineups found for slate_id="
-        f"{slate_id}. Provide --input or --from-run."
+        "No optimizer lineups found for slate_id=" f"{slate_id}. Provide --input or --from-run."
     )
 
 
@@ -244,7 +233,7 @@ def _build_variant_catalog(
         if not parent_id or parent_id not in parent_map:
             raise ValueError(f"Variant missing/unknown parent_lineup_id: {parent_id}")
         parent = parent_map[parent_id]
-        dk_pos = cast(Sequence[Mapping[str, Any]], parent["dk_positions_filled"]) 
+        dk_pos = cast(Sequence[Mapping[str, Any]], parent["dk_positions_filled"])
         if len(dk_pos) != 8:
             raise ValueError("Parent lineup DK slots invalid (expected 8)")
         row: dict[str, Any] = {
@@ -268,7 +257,7 @@ def _build_variant_catalog(
             row["hamming_vs_parent"] = int(v["hamming_vs_parent"])  # pragma: no cover
         else:
             try:
-                parent_players = cast(Sequence[Any], parent["players"]) 
+                parent_players = cast(Sequence[Any], parent["players"])
                 hamming = sum(
                     1 for a, b in zip(list(players), list(parent_players), strict=False) if a != b
                 )
@@ -282,9 +271,7 @@ def _build_variant_catalog(
                 parent.get("total_salary", 0)
             )
         # If we can derive a variant total, enforce cap as a second-line check
-        var_total = _as_int(parent.get("total_salary", 0)) + _as_int(
-            row.get("salary_delta", 0)
-        )
+        var_total = _as_int(parent.get("total_salary", 0)) + _as_int(row.get("salary_delta", 0))
         if var_total is not None and var_total > 50000:
             raise ValueError("Invalid variant: salary exceeds DK cap 50000")
         if "proj_delta" in v:
@@ -403,16 +390,14 @@ def run_adapter(
             {
                 "path": "inline:config_kv",
                 "content_sha256": hashlib.sha256(
-                    json.dumps(kv_parsed, sort_keys=True, separators=(",", ":")).encode(
-                        "utf-8"
-                    )
+                    json.dumps(kv_parsed, sort_keys=True, separators=(",", ":")).encode("utf-8")
                 ).hexdigest(),
                 "role": "config",
             }
         )
 
     # Deterministic run_id
-    ts = datetime.now(timezone.utc)
+    ts = datetime.now(UTC)
     run_id_core = ts.strftime("%Y%m%d_%H%M%S")
     short_hash = hashlib.sha256(f"{opt_sha}|{cfg_sha}|{seed}".encode()).hexdigest()[:8]
     run_id = f"{run_id_core}_{short_hash}"
@@ -463,9 +448,7 @@ def run_adapter(
     }
     if validate:
         validate_obj(manifest_schema, manifest, schemas_root=schemas_root)
-    (run_dir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2), encoding="utf-8"
-    )
+    (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     # Registry append
     registry_path = out_root_eff / "registry" / "runs.parquet"
@@ -557,8 +540,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if unknown:
             unk_msg = ", ".join(unknown)
             print(
-                "[variants] Warning: unknown config keys ignored/passthrough: "
-                f"{unk_msg}",
+                "[variants] Warning: unknown config keys ignored/passthrough: " f"{unk_msg}",
                 file=sys.stderr,
             )
         print(

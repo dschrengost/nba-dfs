@@ -5,7 +5,7 @@ import hashlib
 import json
 import math
 from collections.abc import Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +20,7 @@ SCHEMAS_ROOT = REPO_ROOT / "pipeline" / "schemas"
 
 
 def _utc_now_iso() -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ms = int(now.microsecond / 1000)
     return f"{now.strftime('%Y-%m-%dT%H:%M:%S')}.{ms:03d}Z"
 
@@ -81,7 +81,14 @@ def _contest_entry_fee_from_path(path: Path) -> float:
         if suffix == ".parquet":
             df = pd.read_parquet(path)
             if any(str(c).lower() == "entry_fee" for c in df.columns):
-                vals = pd.to_numeric(df[[c for c in df.columns if str(c).lower() == "entry_fee"][0]], errors="coerce").dropna().unique()
+                vals = (
+                    pd.to_numeric(
+                        df[[c for c in df.columns if str(c).lower() == "entry_fee"][0]],
+                        errors="coerce",
+                    )
+                    .dropna()
+                    .unique()
+                )
                 return float(vals[0]) if len(vals) == 1 else default_fee
             return default_fee
         # CSV or others → default (CSV in sim uses default 20)
@@ -131,9 +138,7 @@ def _duplication_risk_and_entropy(keys: Sequence[str]) -> tuple[float, float]:
     return float(dup_risk), float(entropy)
 
 
-def _aggregate_portfolio_metrics(
-    sim_results: pd.DataFrame, entry_fee: float
-) -> dict[str, float]:
+def _aggregate_portfolio_metrics(sim_results: pd.DataFrame, entry_fee: float) -> dict[str, float]:
     # Expect columns: prize; compute return per trial as (prize - fee)/fee
     fee = float(entry_fee) if entry_fee and entry_fee > 0 else 20.0
     prize = pd.to_numeric(sim_results.get("prize"), errors="coerce").fillna(0.0)
@@ -159,8 +164,7 @@ def run_adapter(
     fixed_ts: str | None = None,
     validate: bool = True,
 ) -> dict[str, Any]:
-    """Compute metrics from an existing sim run. Supports deterministic run IDs and optional validation toggle.
-    """
+    """Compute metrics from an existing sim run. Supports deterministic run IDs and optional validation toggle."""
     schemas_root = schemas_root or SCHEMAS_ROOT
     created_ts = _utc_now_iso()
 
@@ -271,9 +275,7 @@ def run_adapter(
     }
     if validate:
         validate_obj(manifest_schema, manifest, schemas_root=schemas_root)
-    (run_dir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2), encoding="utf-8"
-    )
+    (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     # Registry append
     registry_path = out_root / "registry" / "runs.parquet"
@@ -327,7 +329,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--schemas-root", type=Path)
     p.add_argument("--verbose", action="store_true")
     p.add_argument("--deterministic", action="store_true")
-    p.add_argument("--fixed-ts", type=str, help="Override created_ts (ISO8601, e.g., 2025-09-06T12:34:56.789Z)")
+    p.add_argument(
+        "--fixed-ts",
+        type=str,
+        help="Override created_ts (ISO8601, e.g., 2025-09-06T12:34:56.789Z)",
+    )
     p.add_argument("--no-validate", dest="validate", action="store_false")
     return p
 

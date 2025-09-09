@@ -59,9 +59,7 @@ async def test_export_dk_csv_variants_bad_export_row_422(tmp_path: Path) -> None
     (run_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
 
     async with AsyncClient(app=api_app, base_url="http://test") as ac:
-        resp = await ac.get(
-            f"/export/dk/{run_id}", params={"runs_root": str(runs_root)}
-        )
+        resp = await ac.get(f"/export/dk/{run_id}", params={"runs_root": str(runs_root)})
         assert resp.status_code == 422
         payload = resp.json()
         assert payload["error"] == "invalid_export"

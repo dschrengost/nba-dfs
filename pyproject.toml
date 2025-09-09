@@ -29,8 +29,10 @@ dev = [
   "yamllint>=1.35.1",
   "jsonschema>=4.23.0",
   "pyyaml>=6.0.2",
-  "types-PyYAML>=6.0.12.20240917",
+  "types-pyyaml>=6.0.12.20240917",
   "httpx>=0.27,<0.28",
+  "types-requests>=2.32.4.20250809",
+  "pydantic>=2.11.7",
 ]
 
 [tool.uv]
@@ -54,8 +56,8 @@ dev = [
 
 
 [tool.black]
-line-length = 88
-target-version = ["py310", "py311", "py312"]
+line-length = 100
+target-version = ["py311"]
 extend-exclude = '''
 (
   processes/optimizer/_legacy/
@@ -65,8 +67,8 @@ extend-exclude = '''
 '''
 
 [tool.ruff]
-line-length = 88
-target-version = "py310"
+line-length = 100
+target-version = "py311"
 extend-exclude = ["processes/optimizer/_legacy", "frontend", "app/streamlit", "processes/variants/_legacy", "processes/field_sampler/_legacy"]
 
 [tool.ruff.lint]
@@ -77,10 +79,15 @@ select = [
   "B",   # flake8-bugbear
   "UP",  # pyupgrade
 ]
-ignore = []
+ignore = ["E501"]  # Black owns wrapping
 
 [tool.ruff.lint.isort]
 known-first-party = ["pipeline", "processes", "app"]
+
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401"]
+"tests/**" = ["F401", "F841", "B008", "B018", "E402"]
 
 
 [tool.mypy]
@@ -137,3 +144,4 @@ disallow_subclassing_any = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = ["smoke: minimal tests that should always run"]

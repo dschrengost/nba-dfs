@@ -12,7 +12,9 @@ def run_sim(field_df: pd.DataFrame, contest: dict[str, Any], knobs: dict[str, An
         for r in range(int(p.get("rank_start", 0)), int(p.get("rank_end", 0)) + 1):
             payout[r] = float(p.get("prize", 0.0))
     rows: list[dict[str, Any]] = []
-    entrants = list(pd.to_numeric(field_df.get("entrant_id"), errors="coerce").fillna(0).astype(int))
+    entrants = list(
+        pd.to_numeric(field_df.get("entrant_id"), errors="coerce").fillna(0).astype(int)
+    )
     for i, eid in enumerate(sorted(entrants), start=1):
         rows.append(
             {
@@ -24,7 +26,9 @@ def run_sim(field_df: pd.DataFrame, contest: dict[str, Any], knobs: dict[str, An
                 "seed": int(seed),
             }
         )
-    aggregates = {"ev_mean": float(sum(payout.values()) / max(1, len(entrants))), "roi_mean": -0.1}
+    aggregates = {
+        "ev_mean": float(sum(payout.values()) / max(1, len(entrants))),
+        "roi_mean": -0.1,
+    }
     telemetry = {"note": "stub"}
     return rows, aggregates, telemetry
-

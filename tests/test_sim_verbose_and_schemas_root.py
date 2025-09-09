@@ -12,10 +12,7 @@ def test_verbose_prints_inputs_and_runid(capsys, tmp_path: Path, monkeypatch):
 
     # Field parquet
     players = [f"p{i}" for i in range(8)]
-    dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    ]
+    dk_pos = [{"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]]
     field_df = pd.DataFrame(
         [
             {
@@ -61,10 +58,7 @@ def test_schemas_root_robust_cwd(tmp_path: Path, monkeypatch):
 
     # Field parquet
     players = [f"p{i}" for i in range(8)]
-    dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    ]
+    dk_pos = [{"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]]
     field_df = pd.DataFrame(
         [
             {

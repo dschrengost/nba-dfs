@@ -11,10 +11,7 @@ def test_metrics_schema_and_keys(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("GPP_SIM_IMPL", "tests.fixtures.stub_simulator:run_sim")
 
     players = [f"p{i}" for i in range(8)]
-    dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    ]
+    dk_pos = [{"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]]
     field = pd.DataFrame(
         [
             {

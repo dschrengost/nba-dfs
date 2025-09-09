@@ -22,10 +22,7 @@ def _stub_ok(parent_df: pd.DataFrame, knobs: dict[str, Any], seed: int):
 
 def test_verbose_prints_lineups_path(capsys, tmp_path: Path, monkeypatch):
     slate_id = "20251101_NBA"
-    dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    ]
+    dk_pos = [{"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]]
     players = [f"p{i}" for i in range(8)]
     base = {
         "run_id": "rid",
@@ -61,10 +58,7 @@ def test_verbose_prints_lineups_path(capsys, tmp_path: Path, monkeypatch):
 
 def test_schemas_root_robust(tmp_path: Path, monkeypatch):
     slate_id = "20251101_NBA"
-    dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    ]
+    dk_pos = [{"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]]
     players = [f"p{i}" for i in range(8)]
     base = {
         "run_id": "rid",

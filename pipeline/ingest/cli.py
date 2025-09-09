@@ -6,7 +6,7 @@ import json
 import sys
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -28,7 +28,7 @@ class MappingSpec:
 
 
 def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
 
 def _sha256_of_file(path: Path) -> str:
@@ -40,7 +40,7 @@ def _sha256_of_file(path: Path) -> str:
 
 
 def _mint_run_id(now: datetime | None = None, seed_material: str = "") -> str:
-    ts = (now or datetime.now(timezone.utc)).strftime("%Y%m%d_%H%M%S")
+    ts = (now or datetime.now(UTC)).strftime("%Y%m%d_%H%M%S")
     short = hashlib.sha1(seed_material.encode("utf-8")).hexdigest()[:8]  # nosec: B303
     return f"{ts}_{short}"
 
@@ -158,9 +158,7 @@ def normalize_players(players_csv: Path, now_iso: str | None = None) -> pd.DataF
     now = now_iso or _utc_now_iso()
     # Expect columns: dk_player_id, name, team, pos (e.g., "SF/PF")
     if "pos_eligible" in df.columns:
-        pos_lists = df["pos_eligible"].apply(
-            lambda s: [p for p in str(s).split("/") if p]
-        )
+        pos_lists = df["pos_eligible"].apply(lambda s: [p for p in str(s).split("/") if p])
     else:
         pos_lists = df.get("pos")
         if pos_lists is None:

@@ -6,7 +6,7 @@ import json
 import os
 import sys
 from collections.abc import Callable, Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import (
     Any,
@@ -30,7 +30,7 @@ DK_SLOTS_ORDER = ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
 
 def _utc_now_iso() -> str:
     # Millisecond precision per schema pattern
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ms = int(now.microsecond / 1000)
     return f"{now.strftime('%Y-%m-%dT%H:%M:%S')}.{ms:03d}Z"
 
@@ -68,9 +68,7 @@ def _load_optimizer() -> RunOptimizerFn:
         from processes.optimizer._legacy.optimize import run_optimizer as _run
 
         return cast(RunOptimizerFn, _run)
-    except (
-        Exception
-    ) as e:  # pragma: no cover - exercised in smoke tests via monkeypatch
+    except Exception as e:  # pragma: no cover - exercised in smoke tests via monkeypatch
         raise ImportError(
             "No optimizer implementation available. Provide OPTIMIZER_IMPL or monkeypatch _load_optimizer in tests."
         ) from e
@@ -88,9 +86,7 @@ def _coerce_scalar(val: str) -> int | float | bool | str:
         return val
 
 
-def load_config(
-    config_path: Path | None, inline_kv: Sequence[str] | None = None
-) -> dict[str, Any]:
+def load_config(config_path: Path | None, inline_kv: Sequence[str] | None = None) -> dict[str, Any]:
     cfg: dict[str, Any] = {}
     if config_path:
         text = config_path.read_text(encoding="utf-8")
@@ -178,9 +174,7 @@ def _find_projections(
                 if not key:
                     try:
                         ts_col = pd.read_parquet(p, columns=["updated_ts"])
-                        key = (
-                            str(ts_col["updated_ts"].max()) if not ts_col.empty else ""
-                        )
+                        key = str(ts_col["updated_ts"].max()) if not ts_col.empty else ""
                     except Exception:
                         key = ""
                 if not key:
@@ -202,11 +196,7 @@ def _find_projections(
 
     looked = (
         [candidate_pointer]
-        + (
-            [normalized_dir / f"{slate_id}__*.parquet"]
-            if normalized_dir.exists()
-            else []
-        )
+        + ([normalized_dir / f"{slate_id}__*.parquet"] if normalized_dir.exists() else [])
         + legacy_candidates
     )
     raise FileNotFoundError(
@@ -245,9 +235,7 @@ def _execute_optimizer(
     return lineups, telemetry
 
 
-def export_csv_row(
-    players: Sequence[str], dk_positions_filled: Sequence[Mapping[str, Any]]
-) -> str:
+def export_csv_row(players: Sequence[str], dk_positions_filled: Sequence[Mapping[str, Any]]) -> str:
     """Build DK CSV preview in header order PG,SG,SF,PF,C,G,F,UTIL.
 
     This is a preview string (not a DK-uploadable row). It expects
@@ -272,26 +260,18 @@ def _sanity_check_lineup(
     if len(players) != 8:
         raise ValueError(f"Invalid lineup: expected 8 players, got {len(players)}")
     if len(dk_positions_filled) != 8:
-        raise ValueError(
-            f"Invalid lineup: expected 8 DK slots, got {len(dk_positions_filled)}"
-        )
+        raise ValueError(f"Invalid lineup: expected 8 DK slots, got {len(dk_positions_filled)}")
     slots = {str(s.get("slot")) for s in dk_positions_filled}
     if set(DK_SLOTS_ORDER) != slots:
-        raise ValueError(
-            f"Invalid DK slots: expected {DK_SLOTS_ORDER}, got {sorted(slots)}"
-        )
+        raise ValueError(f"Invalid DK slots: expected {DK_SLOTS_ORDER}, got {sorted(slots)}")
     try:
         if int(total_salary) > 50000:
-            raise ValueError(
-                f"Invalid lineup salary: {total_salary} exceeds DK cap 50000"
-            )
-    except Exception:
-        raise ValueError(f"Invalid lineup salary value: {total_salary}")
+            raise ValueError(f"Invalid lineup salary: {total_salary} exceeds DK cap 50000")
+    except Exception as err:
+        raise ValueError(f"Invalid lineup salary value: {total_salary}") from err
 
 
-def _build_lineups_df(
-    run_id: str, lineups: Sequence[Mapping[str, Any]]
-) -> pd.DataFrame:
+def _build_lineups_df(run_id: str, lineups: Sequence[Mapping[str, Any]]) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for i, lp in enumerate(lineups, start=1):
         players = list(lp.get("players") or [])
@@ -366,9 +346,7 @@ def run_adapter(
 
     # Site preflight (DK only for now)
     if str(site).upper() != "DK":
-        raise ValueError(
-            f"Unsupported site '{site}'. Only 'DK' is supported in this adapter."
-        )
+        raise ValueError(f"Unsupported site '{site}'. Only 'DK' is supported in this adapter.")
 
     cfg = load_config(config_path, config_kv)
     constraints = map_config_to_constraints(cfg)
@@ -411,16 +389,14 @@ def run_adapter(
             {
                 "path": "inline:config_kv",
                 "content_sha256": hashlib.sha256(
-                    json.dumps(kv_parsed, sort_keys=True, separators=(",", ":")).encode(
-                        "utf-8"
-                    )
+                    json.dumps(kv_parsed, sort_keys=True, separators=(",", ":")).encode("utf-8")
                 ).hexdigest(),
                 "role": "config",
             }
         )
 
     # Portable run_id: YYYYMMDD_HHMMSS_<shorthash>
-    ts = datetime.now(timezone.utc)
+    ts = datetime.now(UTC)
     run_id_core = ts.strftime("%Y%m%d_%H%M%S")
     short_hash = hashlib.sha256(
         f"{proj_sha}|{cfg_sha}|{seed}|{site}|{engine}".encode()
@@ -465,9 +441,7 @@ def run_adapter(
     }
     # Validate and write manifest.json
     validate_obj(manifest_schema, manifest, schemas_root=schemas_root)
-    (run_dir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2), encoding="utf-8"
-    )
+    (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     # Append registry (validate rows)
     registry_path = out_root_eff / "registry" / "runs.parquet"

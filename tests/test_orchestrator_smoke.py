@@ -63,9 +63,7 @@ def _stub_optimizer_impl(
     ], {"seed": seed, "engine": engine}
 
 
-def _stub_variants_impl(
-    parent_lineups_df: pd.DataFrame, knobs: Mapping[str, Any], seed: int
-):
+def _stub_variants_impl(parent_lineups_df: pd.DataFrame, knobs: Mapping[str, Any], seed: int):
     variants: list[Mapping[str, Any]] = []
     for _, row in parent_lineups_df.head(1).iterrows():
         variants.append(
@@ -134,9 +132,7 @@ def test_orchestrator_smoke(tmp_path, monkeypatch):
             "source": "manual",
             "projections": str(proj_csv),
             "player_ids": str(players_csv),
-            "mapping": str(
-                Path("pipeline/ingest/mappings/example_source.yaml").resolve()
-            ),
+            "mapping": str(Path("pipeline/ingest/mappings/example_source.yaml").resolve()),
         },
         "optimizer": {"site": "DK", "engine": "cbc", "config": {"num_lineups": 2}},
         "variants": {"config": {"num_variants": 1}},

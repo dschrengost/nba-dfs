@@ -5,11 +5,17 @@ from pathlib import Path
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, List, Iterable, Tuple
-from src.utils.column_mapper import suggest_auto_mapping, INTERNAL_FIELDS, validate_mapping, normalize_header
+from src.utils.column_mapper import (
+    suggest_auto_mapping,
+    INTERNAL_FIELDS,
+    validate_mapping,
+    normalize_header,
+)
 import pandas as pd
 from typing import Any
 
 from src.config import paths
+
 
 # ---------- Data models ----------
 @dataclass(frozen=True)
@@ -24,6 +30,7 @@ class Player:
     own: float
     archetype: str = ""
 
+
 @dataclass
 class Config:
     variants_per_base: int = 5
@@ -31,26 +38,34 @@ class Config:
     global_min_distance: int = 2
     projection_delta: float = 3.0
     max_total_own: float = 160.0
-    salary_buckets: Tuple[Tuple[int,int], ...] = ((49500,50000),(49000,49499),(0,48999))
-    salary_mix: Tuple[float, ...] = (0.45,0.35,0.20)
+    salary_buckets: Tuple[Tuple[int, int], ...] = (
+        (49500, 50000),
+        (49000, 49499),
+        (0, 48999),
+    )
+    salary_mix: Tuple[float, ...] = (0.45, 0.35, 0.20)
     random_seed: int = 23
     # Advanced
     relative_salary_window: int = 700  # lo = max(48000, base_salary - window)
-    ceil_toggle_k: int = 3            # use ceiling metric every k-th variant (k>0)
+    ceil_toggle_k: int = 3  # use ceiling metric every k-th variant (k>0)
+
 
 # SLOTS and DK salary constraints
-SLOTS = ["PG","SG","SF","PF","C","G","F","UTIL"]
+SLOTS = ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
 POS_TO_SLOTS = {
-    "PG":["PG","G","UTIL"], "SG":["SG","G","UTIL"],
-    "SF":["SF","F","UTIL"], "PF":["PF","F","UTIL"],
-    "C":["C","UTIL"],
+    "PG": ["PG", "G", "UTIL"],
+    "SG": ["SG", "G", "UTIL"],
+    "SF": ["SF", "F", "UTIL"],
+    "PF": ["PF", "F", "UTIL"],
+    "C": ["C", "UTIL"],
 }
 # DK constraints
 DK_SAL_LO = 48000
 DK_SAL_HI = 50000
 # ORB schema column order
-ORB_ORDER = ["player_id","name","team","pos","salary","proj","ceil","own"]
+ORB_ORDER = ["player_id", "name", "team", "pos", "salary", "proj", "ceil", "own"]
 _rng = random.Random()
+
 
 # ---- Debug logging ----
 def _debug_enabled() -> bool:
@@ -60,7 +75,9 @@ def _debug_enabled() -> bool:
     except Exception:
         return False
 
+
 from typing import TextIO
+
 
 def _dprint(
     *args: object,
@@ -73,6 +90,7 @@ def _dprint(
         if file is None:
             file = sys.stderr
         print("[VB]", *args, sep=sep, end=end, file=file, flush=flush)
+
 
 # ---- Numeric coercion helpers (solve Pylance Scalar -> int/float) ----
 def _as_int(x: Any) -> int:
@@ -90,6 +108,7 @@ def _as_int(x: Any) -> int:
     except Exception:
         return 0
 
+
 def _as_float(x: Any) -> float:
     try:
         if isinstance(x, (bytes, bytearray, memoryview)):
@@ -102,6 +121,7 @@ def _as_float(x: Any) -> float:
         return float(x)
     except Exception:
         return 0.0
+
 
 # ---------- IO ----------
 
@@ -132,21 +152,24 @@ def _normalize_pool_with_mapper(df: "pd.DataFrame") -> "pd.DataFrame":
             return df[src]
         return default_series if default_series is not None else pd.Series([None] * len(df))
 
-    norm = pd.DataFrame({
-        "player_id": col("player_id", default_series=pd.Series([""] * len(df))).astype(str),
-        "name":      col("name").astype(str),
-        "team":      col("team").astype(str),
-        "pos":       col("position").astype(str),
-        "pos2":      col("pos2", default_series=pd.Series([""] * len(df))).astype(str),
-        "salary":    col("salary"),
-        "proj":      col("proj_fp"),
-        "ceil":      col("ceiling"),
-        "own":       col("own_proj"),
-    })
+    norm = pd.DataFrame(
+        {
+            "player_id": col("player_id", default_series=pd.Series([""] * len(df))).astype(str),
+            "name": col("name").astype(str),
+            "team": col("team").astype(str),
+            "pos": col("position").astype(str),
+            "pos2": col("pos2", default_series=pd.Series([""] * len(df))).astype(str),
+            "salary": col("salary"),
+            "proj": col("proj_fp"),
+            "ceil": col("ceiling"),
+            "own": col("own_proj"),
+        }
+    )
 
     # Normalize salary → int
     norm["salary"] = (
-        norm["salary"].astype(str)
+        norm["salary"]
+        .astype(str)
         .str.replace(r"[^0-9]", "", regex=True)
         .replace("", "0")
         .astype(int)
@@ -197,7 +220,11 @@ def _read_player_pool(path: str) -> Dict[str, Player]:
         norm = df[ORB_ORDER].copy()
         # Ensure types / normalization
         norm["salary"] = (
-            norm["salary"].astype(str).str.replace(r"[^0-9]", "", regex=True).replace("", "0").astype(int)
+            norm["salary"]
+            .astype(str)
+            .str.replace(r"[^0-9]", "", regex=True)
+            .replace("", "0")
+            .astype(int)
         )
         norm["proj"] = pd.to_numeric(norm["proj"], errors="coerce").fillna(0.0)
         norm["ceil"] = pd.to_numeric(norm["ceil"], errors="coerce").fillna(norm["proj"])
@@ -206,7 +233,8 @@ def _read_player_pool(path: str) -> Dict[str, Player]:
         own.loc[frac] = own.loc[frac] * 100.0
         norm["own"] = own.fillna(0.0).clip(0.0, 100.0)
         norm["pos"] = (
-            norm["pos"].astype(str)
+            norm["pos"]
+            .astype(str)
             .str.replace("|", "/", regex=False)
             .str.replace(",", "/", regex=False)
             .str.replace(" ", "", regex=False)
@@ -236,8 +264,24 @@ def _read_player_pool(path: str) -> Dict[str, Player]:
 
                 # Standardize common team variants
                 for col in ("__team_norm",):
-                    norm[col] = norm[col].replace({"PHO": "PHX", "GS": "GSW", "SA": "SAS", "NO": "NOP", "NY": "NYK"})
-                    ids_sub[col] = ids_sub[col].replace({"PHO": "PHX", "GS": "GSW", "SA": "SAS", "NO": "NOP", "NY": "NYK"})
+                    norm[col] = norm[col].replace(
+                        {
+                            "PHO": "PHX",
+                            "GS": "GSW",
+                            "SA": "SAS",
+                            "NO": "NOP",
+                            "NY": "NYK",
+                        }
+                    )
+                    ids_sub[col] = ids_sub[col].replace(
+                        {
+                            "PHO": "PHX",
+                            "GS": "GSW",
+                            "SA": "SAS",
+                            "NO": "NOP",
+                            "NY": "NYK",
+                        }
+                    )
 
                 norm = norm.merge(
                     ids_sub[["__name_norm", "__team_norm", "dk_id"]],
@@ -283,7 +327,7 @@ def _read_player_pool(path: str) -> Dict[str, Player]:
             team=str(row["team"]),
             salary=_as_int(row["salary"]),
             proj=_as_float(row["proj"]),
-            ceil=_as_float(row["ceil"]) if pd.notna(row["ceil"]) else _as_float(row["proj"]),
+            ceil=(_as_float(row["ceil"]) if pd.notna(row["ceil"]) else _as_float(row["proj"])),
             own=_as_float(row["own"]),
         )
         out[pid] = pl
@@ -312,22 +356,26 @@ def _read_player_pool(path: str) -> Dict[str, Player]:
     if _debug_enabled():
         n = len(out)
         denom = max(1, len(norm))
-        _dprint("pool stats", {
-            "players": n,
-            "pct_salary0": round(100.0 * n_sal0 / denom, 2),
-            "pct_proj0": round(100.0 * n_proj0 / denom, 2),
-            "pct_ceil_eq_proj": round(100.0 * n_ceil_eq_proj / denom, 2),
-            "pct_own_le1": round(100.0 * n_own_le1 / denom, 2),
-            "multi_pos": n_multi_pos,
-            "single_pos": n_single_pos,
-        })
+        _dprint(
+            "pool stats",
+            {
+                "players": n,
+                "pct_salary0": round(100.0 * n_sal0 / denom, 2),
+                "pct_proj0": round(100.0 * n_proj0 / denom, 2),
+                "pct_ceil_eq_proj": round(100.0 * n_ceil_eq_proj / denom, 2),
+                "pct_own_le1": round(100.0 * n_own_le1 / denom, 2),
+                "multi_pos": n_multi_pos,
+                "single_pos": n_single_pos,
+            },
+        )
 
     return out
+
 
 def _read_lineups_long(path: str) -> List[List[str]]:
     """Read lineups from either long format or DK optimizer wide format"""
     import re
-    
+
     p = Path(path)
     if p.suffix.lower() == ".parquet":
         df = pd.read_parquet(p)
@@ -345,13 +393,13 @@ def _read_lineups_long(path: str) -> List[List[str]]:
             first_row = next(r, None)
             if not first_row:
                 return []
-            
+
             # Reset reader
             f.seek(0)
             r = csv.DictReader(f)
-            
+
             # Check format: if has 'lineup_id' it's long format, otherwise DK wide format
-            if 'lineup_id' in first_row:
+            if "lineup_id" in first_row:
                 # Long format
                 bucket = defaultdict(list)
                 for row in r:
@@ -361,19 +409,19 @@ def _read_lineups_long(path: str) -> List[List[str]]:
                 # DK wide format: PG,SG,SF,PF,C,G,F,UTIL columns with display strings
                 # Stop reusing embedded numeric IDs; parse name/team and emit synthetic keys "Name_TEAM"
                 lineups = []
-                positions = ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F', 'UTIL']
+                positions = ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
 
                 def parse_key(cell: str) -> str | None:
                     if not cell:
                         return None
                     s = str(cell).strip()
                     # Handle PRP-26 safe format: "Name (salary) • TEAM • dk_id"
-                    if '•' in s:
-                        parts = [p.strip() for p in s.split('•')]
+                    if "•" in s:
+                        parts = [p.strip() for p in s.split("•")]
                         if len(parts) >= 2:
                             left = parts[0]
                             team = parts[1].split()[0].upper()
-                            name = left.split('(')[0].strip()
+                            name = left.split("(")[0].strip()
                             if name and team:
                                 return f"{name}_{team}"
                     # Handle legacy "Name (12345 TEAM)" or "Name (TEAM)"
@@ -384,7 +432,7 @@ def _read_lineups_long(path: str) -> List[List[str]]:
                         if name and team:
                             return f"{name}_{team}"
                     # Fallback: just name
-                    name_only = s.split('(')[0].strip()
+                    name_only = s.split("(")[0].strip()
                     return name_only or None
 
                 for row in r:
@@ -398,6 +446,7 @@ def _read_lineups_long(path: str) -> List[List[str]]:
                         lineups.append(sorted(lineup))
                 return lineups
 
+
 def _write_lineups_long(lineups: List[List[str]], path: str, prefix: str = "var"):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="") as f:
@@ -408,13 +457,17 @@ def _write_lineups_long(lineups: List[List[str]], path: str, prefix: str = "var"
             for pid in lu:
                 w.writerow([lid, pid])
 
+
 # ---------- Helpers ----------
+
 
 def _sum(pool: Dict[str, Player], lu: Iterable[str], attr: str) -> float:
     return sum(getattr(pool[p], attr) for p in lu)
 
+
 def _salary(pool: Dict[str, Player], lu: Iterable[str]) -> int:
     return sum(pool[p].salary for p in lu)
+
 
 def _hamming(a: List[str], b: List[str]) -> int:
     """Count different players between two 8-man sets as the number of players in `a` not in `b`.
@@ -422,6 +475,7 @@ def _hamming(a: List[str], b: List[str]) -> int:
     """
     sa, sb = set(a), set(b)
     return len(sa - sb)
+
 
 def _is_valid_slots(pool: Dict[str, Player], lineup: List[str]) -> bool:
     """True iff players in `lineup` can be assigned to DK slots (PG,SG,SF,PF,C,G,F,UTIL).
@@ -437,7 +491,7 @@ def _is_valid_slots(pool: Dict[str, Player], lineup: List[str]) -> bool:
     def eligible_slots(pid: str) -> List[str]:
         slots: List[str] = []
         for pos in pool[pid].positions:
-            slots.extend(POS_TO_SLOTS.get(pos, ['UTIL']))
+            slots.extend(POS_TO_SLOTS.get(pos, ["UTIL"]))
         # stable de-duplication preserving first-seen order
         seen: set[str] = set()
         uniq: List[str] = []
@@ -448,7 +502,16 @@ def _is_valid_slots(pool: Dict[str, Player], lineup: List[str]) -> bool:
         return uniq
 
     # Prioritize tighter slots to reduce branching
-    slot_priority = {"C": 0, "PF": 1, "SF": 1, "PG": 2, "SG": 2, "G": 3, "F": 3, "UTIL": 4}
+    slot_priority = {
+        "C": 0,
+        "PF": 1,
+        "SF": 1,
+        "PG": 2,
+        "SG": 2,
+        "G": 3,
+        "F": 3,
+        "UTIL": 4,
+    }
 
     order = list(lineup)
     try:
@@ -494,7 +557,7 @@ def _assign_slots(pool: Dict[str, Player], lineup: List[str]) -> List[Tuple[str,
     def eligible_slots(pid: str) -> List[str]:
         slots: List[str] = []
         for pos in pool[pid].positions:
-            slots.extend(POS_TO_SLOTS.get(pos, ['UTIL']))
+            slots.extend(POS_TO_SLOTS.get(pos, ["UTIL"]))
         seen: set[str] = set()
         uniq: List[str] = []
         for s in slots:
@@ -503,7 +566,16 @@ def _assign_slots(pool: Dict[str, Player], lineup: List[str]) -> List[Tuple[str,
                 uniq.append(s)
         return uniq
 
-    slot_priority = {"C": 0, "PF": 1, "SF": 1, "PG": 2, "SG": 2, "G": 3, "F": 3, "UTIL": 4}
+    slot_priority = {
+        "C": 0,
+        "PF": 1,
+        "SF": 1,
+        "PG": 2,
+        "SG": 2,
+        "G": 3,
+        "F": 3,
+        "UTIL": 4,
+    }
 
     order = list(lineup)
     try:
@@ -544,8 +616,10 @@ def _assign_slots(pool: Dict[str, Player], lineup: List[str]) -> List[Tuple[str,
             out.append((s, by_slot[s]))
     return out
 
+
 def _pick_bucket(cfg: Config) -> Tuple[int, int]:
     return _rng.choices(cfg.salary_buckets, weights=cfg.salary_mix, k=1)[0]
+
 
 def _pick_bucket_for_base(cfg: Config, base_salary: int) -> Tuple[int, int]:
     """Pick a salary bucket relative to the base lineup's salary.
@@ -563,7 +637,12 @@ def _pick_bucket_for_base(cfg: Config, base_salary: int) -> Tuple[int, int]:
 
 
 # ----------- Validator utility -----------
-def _validate_lineup(pool: Dict[str, Player], lineup: List[str], lo: int | None = None, hi: int | None = None) -> tuple[bool, str]:
+def _validate_lineup(
+    pool: Dict[str, Player],
+    lineup: List[str],
+    lo: int | None = None,
+    hi: int | None = None,
+) -> tuple[bool, str]:
     """Hard validator: slot-assignable to exactly the 8 DK slots and salary within [lo,hi] if provided.
     Returns (ok, reason_if_not_ok).
     """
@@ -592,12 +671,13 @@ def _validate_lineup(pool: Dict[str, Player], lineup: List[str], lo: int | None 
             return (False, f"salary {sal} > hi {hi}")
     return (True, "")
 
+
 def _greedy_variant(
     base: List[str],
     pool: Dict[str, Player],
     cfg: Config,
     bucket: Tuple[int, int],
-    use_ceil: bool = False
+    use_ceil: bool = False,
 ) -> List[str] | None:
     lo, hi = bucket
     metric = "ceil" if use_ceil else "proj"
@@ -609,15 +689,27 @@ def _greedy_variant(
     # pick “victims”: highest own, then lower proj
     victims = sorted(base, key=lambda p: (pool[p].own, -pool[p].proj), reverse=True)[:k]
     keepers = [p for p in base if p not in victims]
-    _dprint("_greedy_variant start", {"base": base, "k": k, "victims": victims, "keepers": keepers, "bucket": (lo, hi), "use_ceil": use_ceil})
+    _dprint(
+        "_greedy_variant start",
+        {
+            "base": base,
+            "k": k,
+            "victims": victims,
+            "keepers": keepers,
+            "bucket": (lo, hi),
+            "use_ceil": use_ceil,
+        },
+    )
 
     # candidate lists for each victim (prefer same-pos; fallback to any)
     candidate_lists: List[List[Player]] = []
     for v in victims:
         vpos = set(pool[v].positions)
-        cands = [pl for pl in pool.values()
-                 if pl.id != v and pl.id not in keepers
-                 and (vpos & set(pl.positions))]
+        cands = [
+            pl
+            for pl in pool.values()
+            if pl.id != v and pl.id not in keepers and (vpos & set(pl.positions))
+        ]
         if not cands:
             cands = [pl for pl in pool.values() if pl.id != v and pl.id not in keepers]
 
@@ -641,7 +733,10 @@ def _greedy_variant(
                 lineup = test
                 used.add(pl.id)
                 placed = True
-                _dprint("placed victim replacement", {"pid": pl.id, "salary": _salary(pool, lineup)})
+                _dprint(
+                    "placed victim replacement",
+                    {"pid": pl.id, "salary": _salary(pool, lineup)},
+                )
                 break
         if not placed:
             _dprint("failed to place replacement for a victim")
@@ -686,7 +781,7 @@ def _greedy_variant(
                     allowed_drop = 0.5 if up_iter < 60 else 1.25
                     if (getattr(pl_new, metric) + allowed_drop) < getattr(pl_old, metric):
                         continue
-                    test = lineup[:idx] + [pl_new.id] + lineup[idx+1:]
+                    test = lineup[:idx] + [pl_new.id] + lineup[idx + 1 :]
                     if not _is_valid_slots(pool, test):
                         continue
                     new_sal = _salary(pool, test)
@@ -704,22 +799,42 @@ def _greedy_variant(
                 break
 
     if not (lo <= sal <= hi):
-        _dprint("final salary out of range", {"salary": sal, "lo": lo, "hi": hi, "hint": "consider widening relative_salary_window or check high-salary base"})
+        _dprint(
+            "final salary out of range",
+            {
+                "salary": sal,
+                "lo": lo,
+                "hi": hi,
+                "hint": "consider widening relative_salary_window or check high-salary base",
+            },
+        )
         return None
 
     # ownership cap
     if _sum(pool, lineup, "own") > cfg.max_total_own:
-        _dprint("ownership cap exceeded", {"own_sum": _sum(pool, lineup, "own"), "cap": cfg.max_total_own})
+        _dprint(
+            "ownership cap exceeded",
+            {"own_sum": _sum(pool, lineup, "own"), "cap": cfg.max_total_own},
+        )
         return None
 
     ok, _why = _validate_lineup(pool, lineup, lo, hi)
     if not ok:
         _dprint("validator failed at end of _greedy_variant", {"why": _why})
         return None
-    _dprint("_greedy_variant ok", {"salary": sal, "own": _sum(pool, lineup, "own"), "assign": _assign_slots(pool, lineup)})
+    _dprint(
+        "_greedy_variant ok",
+        {
+            "salary": sal,
+            "own": _sum(pool, lineup, "own"),
+            "assign": _assign_slots(pool, lineup),
+        },
+    )
     return sorted(lineup)
 
+
 # ---------- Core ----------
+
 
 def build_variants(
     optimizer_lineups_path: str | None = None,
@@ -734,7 +849,7 @@ def build_variants(
         player_pool_path = str(paths.PLAYER_POOL)
     if out_path is None:
         out_path = str(paths.VARIANT_CATALOG)
-    
+
     # Backward compatibility: ignore deprecated keys such as 'max_exposure'
     _raw_cfg = dict(cfg_dict or {})
     _raw_cfg.pop("max_exposure", None)
@@ -747,6 +862,7 @@ def build_variants(
     warnings: List[str] = []
     # Robustly resolve/match base lineup player_ids to pool keys
     import re as _re
+
     id_re = _re.compile(r"^(.+)_([A-Z]{2,4})_(\d+)(?:_\d+)?$")
 
     def _resolve_pid_from_pool(pid: str) -> str | None:
@@ -799,7 +915,7 @@ def build_variants(
             # Use relative bucket based on base salary instead of fixed buckets
             bucket = _pick_bucket_for_base(cfg, bsal)
             k = int(getattr(cfg, "ceil_toggle_k", 3) or 0)
-            use_ceil = (k > 0 and ((i + 1) % k == 0))
+            use_ceil = k > 0 and ((i + 1) % k == 0)
             v = _greedy_variant(b, pool, cfg, bucket, use_ceil=use_ceil)
             if not v:
                 continue
@@ -849,10 +965,12 @@ def build_variants(
                         seen_ids.add(pl.id)
                 if len(trial) == 8:
                     lo, hi = _pick_bucket_for_base(cfg, bsal)
-                    if (_sum(pool, trial, "proj") >= bproj - cfg.projection_delta
+                    if (
+                        _sum(pool, trial, "proj") >= bproj - cfg.projection_delta
                         and _sum(pool, trial, "own") <= cfg.max_total_own
                         and _hamming(trial, b) >= cfg.min_uniques
-                        and all(_hamming(trial, x) >= cfg.global_min_distance for x in bank)):
+                        and all(_hamming(trial, x) >= cfg.global_min_distance for x in bank)
+                    ):
                         ok_t, _w2 = _validate_lineup(pool, trial, lo, hi)
                         if ok_t:
                             bank.append(sorted(trial))
@@ -874,7 +992,9 @@ def build_variants(
     if out_path:
         Path(out_path).parent.mkdir(parents=True, exist_ok=True)
         if Path(out_path).suffix.lower() == ".parquet":
-            pd.DataFrame(rows, columns=["lineup_id", "slot", "player_id"]).to_parquet(out_path, index=False)
+            pd.DataFrame(rows, columns=["lineup_id", "slot", "player_id"]).to_parquet(
+                out_path, index=False
+            )
         else:
             with open(out_path, "w", newline="") as f:
                 w = csv.writer(f)
@@ -887,16 +1007,28 @@ def build_variants(
         "n_bases": len(bases),
         "n_variants": len(bank),
         "out_path": str(out_path) if out_path else "",
-        "variants_df": pd.DataFrame(rows, columns=["lineup_id", "slot", "player_id"]) if rows else pd.DataFrame(columns=["lineup_id", "slot", "player_id"]),
+        "variants_df": (
+            pd.DataFrame(rows, columns=["lineup_id", "slot", "player_id"])
+            if rows
+            else pd.DataFrame(columns=["lineup_id", "slot", "player_id"])
+        ),
         "warnings": warnings,
     }
 
-def build_and_write(optimizer_lineups_path: str, player_pool_path: str, out_path: str, cfg_json: str | dict):
+
+def build_and_write(
+    optimizer_lineups_path: str,
+    player_pool_path: str,
+    out_path: str,
+    cfg_json: str | dict,
+):
     cfg = json.loads(cfg_json) if isinstance(cfg_json, str) else cfg_json
     return build_variants(optimizer_lineups_path, player_pool_path, out_path, cfg)
 
 
-def build_variants_df_from_dfs(pool_df: pd.DataFrame, bases_long_df: pd.DataFrame, cfg_dict: dict | None = None) -> pd.DataFrame:
+def build_variants_df_from_dfs(
+    pool_df: pd.DataFrame, bases_long_df: pd.DataFrame, cfg_dict: dict | None = None
+) -> pd.DataFrame:
     """Generate variants-only long DataFrame from in-memory DataFrames.
     - pool_df should have canonical columns: player_id, name, team, pos, salary, proj, ceil, own
     - bases_long_df must have: lineup_id, player_id (slot optional)
@@ -916,7 +1048,13 @@ def build_variants_df_from_dfs(pool_df: pd.DataFrame, bases_long_df: pd.DataFram
     # Normalize fields/types
     pdf["name"] = pdf["name"].astype(str)
     pdf["team"] = pdf["team"].astype(str)
-    pdf["pos"] = pdf["pos"].astype(str).str.replace("|", "/", regex=False).str.replace(",", "/", regex=False).str.replace(" ", "", regex=False)
+    pdf["pos"] = (
+        pdf["pos"]
+        .astype(str)
+        .str.replace("|", "/", regex=False)
+        .str.replace(",", "/", regex=False)
+        .str.replace(" ", "", regex=False)
+    )
     pdf["salary"] = pd.to_numeric(pdf["salary"], errors="coerce").fillna(0).astype("int64")
     pdf["proj"] = pd.to_numeric(pdf["proj"], errors="coerce").fillna(0.0).astype("float64")
     pdf["ceil"] = pd.to_numeric(pdf["ceil"], errors="coerce").fillna(pdf["proj"]).astype("float64")
@@ -934,7 +1072,9 @@ def build_variants_df_from_dfs(pool_df: pd.DataFrame, bases_long_df: pd.DataFram
     by_nts: Dict[str, Player] = {}
     by_nt: Dict[str, Player] = {}
 
-    for r in pdf[["player_id", "name", "team", "pos", "salary", "proj", "ceil", "own"]].itertuples(index=False, name="Row"):
+    for r in pdf[["player_id", "name", "team", "pos", "salary", "proj", "ceil", "own"]].itertuples(
+        index=False, name="Row"
+    ):
         pid_raw = str(r.player_id) if r.player_id is not None else ""
         pid = pid_raw.strip()
         poss = [p for p in str(r.pos).split("/") if p]
@@ -967,6 +1107,7 @@ def build_variants_df_from_dfs(pool_df: pd.DataFrame, bases_long_df: pd.DataFram
     # Resolve base lineup IDs to pool keys. Accept exact match, else
     # try "Name_Team_Salary_XXXX" → "Name_Team_Salary" prefix; else name+team.
     import re
+
     id_re = re.compile(r"^(.+)_([A-Z]{2,4})_(\d+)(?:_\d+)?$")
 
     def _resolve_pid(bpid: str) -> str | None:
@@ -1022,7 +1163,7 @@ def build_variants_df_from_dfs(pool_df: pd.DataFrame, bases_long_df: pd.DataFram
         for i in range(cfg.variants_per_base):
             bucket = _pick_bucket_for_base(cfg, bsal)
             k = int(getattr(cfg, "ceil_toggle_k", 3) or 0)
-            use_ceil = (k > 0 and ((i + 1) % k == 0))
+            use_ceil = k > 0 and ((i + 1) % k == 0)
             v = _greedy_variant(b, pool, cfg, bucket, use_ceil=use_ceil)
             if not v:
                 continue
@@ -1070,10 +1211,12 @@ def build_variants_df_from_dfs(pool_df: pd.DataFrame, bases_long_df: pd.DataFram
                         seen_ids.add(pl.id)
                 if len(trial) == 8:
                     lo, hi = _pick_bucket_for_base(cfg, bsal)
-                    if (_sum(pool, trial, "proj") >= bproj - cfg.projection_delta
+                    if (
+                        _sum(pool, trial, "proj") >= bproj - cfg.projection_delta
                         and _sum(pool, trial, "own") <= cfg.max_total_own
                         and _hamming(trial, b) >= cfg.min_uniques
-                        and all(_hamming(trial, x) >= cfg.global_min_distance for x in bank)):
+                        and all(_hamming(trial, x) >= cfg.global_min_distance for x in bank)
+                    ):
                         ok_t, _w2 = _validate_lineup(pool, trial, lo, hi)
                         if ok_t:
                             bank.append(sorted(trial))
@@ -1089,4 +1232,8 @@ def build_variants_df_from_dfs(pool_df: pd.DataFrame, bases_long_df: pd.DataFram
         for slot, pid in assignment:  # type: ignore[arg-type]
             rows.append({"lineup_id": lid, "slot": slot, "player_id": pid})
 
-    return pd.DataFrame(rows, columns=["lineup_id", "slot", "player_id"]) if rows else pd.DataFrame(columns=["lineup_id", "slot", "player_id"])
+    return (
+        pd.DataFrame(rows, columns=["lineup_id", "slot", "player_id"])
+        if rows
+        else pd.DataFrame(columns=["lineup_id", "slot", "player_id"])
+    )

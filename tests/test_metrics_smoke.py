@@ -10,10 +10,7 @@ from processes.metrics import adapter as metrics
 
 def _build_simple_field(tmp_path: Path) -> Path:
     players = [f"p{i}" for i in range(8)]
-    dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    ]
+    dk_pos = [{"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]]
     df = pd.DataFrame(
         [
             {
@@ -65,7 +62,11 @@ def test_metrics_from_sim_smoke(tmp_path: Path, monkeypatch):
 
     # Run metrics adapter from the sim run
     mres = metrics.run_adapter(from_sim_run=sim_run_id, out_root=out_root, seed=123)
-    mpath = Path(mres["metrics_path"]) if isinstance(mres["metrics_path"], str) else mres["metrics_path"]
+    mpath = (
+        Path(mres["metrics_path"])
+        if isinstance(mres["metrics_path"], str)
+        else mres["metrics_path"]
+    )
     assert mpath.exists()
 
     df = pd.read_parquet(mpath)
@@ -76,8 +77,14 @@ def test_metrics_from_sim_smoke(tmp_path: Path, monkeypatch):
         assert k in aggs
 
     # Manifest and registry
-    manifest = Path(mres["manifest_path"]) if isinstance(mres["manifest_path"], str) else mres["manifest_path"]
-    registry = Path(mres["registry_path"]) if isinstance(mres["registry_path"], str) else mres["registry_path"]
+    manifest = (
+        Path(mres["manifest_path"])
+        if isinstance(mres["manifest_path"], str)
+        else mres["manifest_path"]
+    )
+    registry = (
+        Path(mres["registry_path"])
+        if isinstance(mres["registry_path"], str)
+        else mres["registry_path"]
+    )
     assert manifest.exists() and registry.exists()
-
-

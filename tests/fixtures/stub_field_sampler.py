@@ -3,9 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 
-def run_sampler(
-    catalog_df, config: dict[str, Any], seed: int
-) -> tuple[Any, dict[str, Any]]:
+def run_sampler(catalog_df, config: dict[str, Any], seed: int) -> tuple[Any, dict[str, Any]]:
     """Stub sampler honoring diversity knob.
 
     - diversity < 0.5  => many duplicates (high duplication_risk)

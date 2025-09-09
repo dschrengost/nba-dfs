@@ -13,10 +13,7 @@ def test_smoke_adapter_end_to_end(tmp_path: Path, monkeypatch):
 
     # Field parquet (3 entrants)
     players = [f"p{i}" for i in range(8)]
-    dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    ]
+    dk_pos = [{"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]]
     field_rows = []
     for i in range(1, 4):
         field_rows.append(

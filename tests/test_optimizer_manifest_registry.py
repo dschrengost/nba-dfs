@@ -9,20 +9,15 @@ import pandas as pd
 from processes.optimizer import adapter as opt
 
 
-def _stub_run(
-    df: pd.DataFrame, constraints: dict[str, Any], seed: int, site: str, engine: str
-):
-    dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    ]
-    l = {
+def _stub_run(df: pd.DataFrame, constraints: dict[str, Any], seed: int, site: str, engine: str):
+    dk_pos = [{"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]]
+    lineup = {
         "players": list(df["player_id"].head(8)),
         "dk_positions_filled": dk_pos,
         "total_salary": int(df["salary"].head(8).sum()),
         "proj_fp": float(df["proj_fp"].head(8).sum()),
     }
-    return [l]
+    return [lineup]
 
 
 def test_manifest_and_registry_written(monkeypatch, tmp_path: Path):

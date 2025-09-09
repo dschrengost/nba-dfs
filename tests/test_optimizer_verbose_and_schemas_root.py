@@ -8,17 +8,15 @@ import pandas as pd
 from processes.optimizer import adapter as opt
 
 
-def _stub_ok(
-    df: pd.DataFrame, constraints: dict[str, Any], seed: int, site: str, engine: str
-):
+def _stub_ok(df: pd.DataFrame, constraints: dict[str, Any], seed: int, site: str, engine: str):
     slots = ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    l = {
+    lineup = {
         "players": list(df["player_id"].head(8)),
         "dk_positions_filled": [{"slot": s, "position": s} for s in slots],
         "total_salary": int(df["salary"].head(8).sum()),
         "proj_fp": float(df["proj_fp"].head(8).sum()),
     }
-    return [l]
+    return [lineup]
 
 
 def test_verbose_prints_projections(capsys, tmp_path: Path, monkeypatch):

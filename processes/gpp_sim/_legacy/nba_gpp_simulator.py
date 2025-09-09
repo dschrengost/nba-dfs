@@ -316,9 +316,7 @@ class NBA_GPP_Simulator:
             for team in self.team_list:
                 problem += (
                     plp.lpSum(
-                        lp_variables[
-                            self.player_dict[(player, pos_str, team)]["UniqueKey"]
-                        ]
+                        lp_variables[self.player_dict[(player, pos_str, team)]["UniqueKey"]]
                         for (player, pos_str, team) in self.player_dict
                         if self.player_dict[(player, pos_str, team)]["Team"] == team
                     )
@@ -445,9 +443,7 @@ class NBA_GPP_Simulator:
         fpts_proj = sum(self.player_dict[player]["fieldFpts"] for player in players)
         # sal_used = sum(self.player_dict[player]["Salary"] for player in players)
 
-        var_values = [
-            value.varValue for value in problem.variables() if value.varValue != 0
-        ]
+        [value.varValue for value in problem.variables() if value.varValue != 0]
         player_unqiue_keys = [
             player for player in lp_variables if lp_variables[player].varValue != 0
         ]
@@ -507,15 +503,9 @@ class NBA_GPP_Simulator:
                 pos_str = str(position)
                 # print(player_name, pos_str, team)
                 if (player_name, pos_str, team) in self.player_dict:
-                    self.player_dict[(player_name, pos_str, team)]["ID"] = str(
-                        row["id"]
-                    )
-                    self.player_dict[(player_name, pos_str, team)]["UniqueKey"] = str(
-                        row["id"]
-                    )
-                    self.player_dict[(player_name, pos_str, team)]["Team"] = row[
-                        team_key
-                    ]
+                    self.player_dict[(player_name, pos_str, team)]["ID"] = str(row["id"])
+                    self.player_dict[(player_name, pos_str, team)]["UniqueKey"] = str(row["id"])
+                    self.player_dict[(player_name, pos_str, team)]["Team"] = row[team_key]
                     self.player_dict[(player_name, pos_str, team)]["Opp"] = team_opp
                     self.player_dict[(player_name, pos_str, team)]["Matchup"] = opp
                 self.id_name_dict[str(row["id"])] = row[name_key]
@@ -538,9 +528,7 @@ class NBA_GPP_Simulator:
                         # Where I'm from, we 0 index things. Thus, -1 since Payout starts at 1st place
                         if i >= self.field_size:
                             break
-                        self.payout_structure[i - 1] = float(
-                            row["payout"].replace(",", "")
-                        )
+                        self.payout_structure[i - 1] = float(row["payout"].replace(",", ""))
                 # single-position payouts
                 else:
                     if int(row["place"]) >= self.field_size:
@@ -554,13 +542,11 @@ class NBA_GPP_Simulator:
         if len(self.correlation_rules.keys()) > 0:
             for primary_player in self.correlation_rules.keys():
                 # Convert primary_player to the consistent format
-                formatted_primary_player = (
-                    primary_player.replace("-", "#").lower().strip()
-                )
+                formatted_primary_player = primary_player.replace("-", "#").lower().strip()
                 for (
                     player_name,
-                    pos_str,
-                    team,
+                    _pos_str,
+                    _team,
                 ), player_data in self.player_dict.items():
                     if formatted_primary_player == player_name:
                         for second_entity, correlation_value in self.correlation_rules[
@@ -575,8 +561,8 @@ class NBA_GPP_Simulator:
                             found_second_entity = False
                             for (
                                 se_name,
-                                se_pos_str,
-                                se_team,
+                                _se_pos_str,
+                                _se_team,
                             ), se_data in self.player_dict.items():
                                 if formatted_second_entity == se_name:
                                     player_data["Player Correlations"][
@@ -590,9 +576,7 @@ class NBA_GPP_Simulator:
 
                             # If the second_entity is not found as a player, assume it's a position and update 'Correlations'
                             if not found_second_entity:
-                                player_data["Correlations"][
-                                    second_entity
-                                ] = correlation_value
+                                player_data["Correlations"][second_entity] = correlation_value
 
     # Load config from file
     def load_config(self):
@@ -611,14 +595,9 @@ class NBA_GPP_Simulator:
                 player_name = row["name"].replace("-", "#").lower().strip()
                 try:
                     fpts = float(row["fpts"])
-                except:
+                except Exception:
                     fpts = 0
-                    print(
-                        "unable to load player fpts: "
-                        + player_name
-                        + ", fpts:"
-                        + row["fpts"]
-                    )
+                    print("unable to load player fpts: " + player_name + ", fpts:" + row["fpts"])
                 if "fieldfpts" in row:
                     if row["fieldfpts"] == "":
                         fieldFpts = fpts
@@ -650,7 +629,7 @@ class NBA_GPP_Simulator:
                 else:
                     ceil = fpts + stddev
                 if row["salary"]:
-                    sal = int(row["salary"].replace(",", ""))
+                    int(row["salary"].replace(",", ""))
                 if "minutes" in row:
                     mins = row["minutes"]
                 else:
@@ -747,12 +726,10 @@ class NBA_GPP_Simulator:
 
                 # Check if player is in player_dict and get Opp, ID, Opp Pitcher ID and Opp Pitcher Name
                 if (player_name, pos_str, team) in self.player_dict:
-                    player_data["Opp"] = self.player_dict[
-                        (player_name, pos_str, team)
-                    ].get("Opp", "")
-                    player_data["ID"] = self.player_dict[
-                        (player_name, pos_str, team)
-                    ].get("ID", "")
+                    player_data["Opp"] = self.player_dict[(player_name, pos_str, team)].get(
+                        "Opp", ""
+                    )
+                    player_data["ID"] = self.player_dict[(player_name, pos_str, team)].get("ID", "")
 
                 self.player_dict[(player_name, pos_str, team)] = player_data
                 self.teams_dict[team].append(
@@ -777,27 +754,23 @@ class NBA_GPP_Simulator:
         with open(path) as file:
             reader = pd.read_csv(file)
             lineup = []
-            bad_lus = []
             bad_players = []
             j = 0
             for i, row in reader.iterrows():
                 if i == self.field_size:
                     break
                 lineup = [
-                    self.extract_id(str(row[q]))
-                    for q in range(len(self.roster_construction))
+                    self.extract_id(str(row[q])) for q in range(len(self.roster_construction))
                 ]
                 # storing if this lineup was made by an optimizer or with the generation process in this script
                 error = False
-                for l in lineup:
+                for player_id in lineup:
                     ids = [self.player_dict[k]["ID"] for k in self.player_dict]
-                    if l not in ids:
-                        print(
-                            f"player id {l} in lineup {i} not found in player dict"
-                        )
-                        if l in self.id_name_dict:
-                            print(self.id_name_dict[l])
-                        bad_players.append(l)
+                    if player_id not in ids:
+                        print(f"player id {player_id} in lineup {i} not found in player dict")
+                        if player_id in self.id_name_dict:
+                            print(self.id_name_dict[player_id])
+                        bad_players.append(player_id)
                         error = True
                 if len(lineup) < len(self.roster_construction):
                     print(f"lineup {i} doesn't match roster construction size")
@@ -859,8 +832,6 @@ class NBA_GPP_Simulator:
         reject = True
         iteration_count = 0
         total_players = num_players_in_roster
-        issue = ""
-        complete = ""
         reasonable_projection = optimal_score - (max_pct_off_optimal * optimal_score)
         max_players_per_team = 4 if site == "fd" else None
         while reject:
@@ -871,7 +842,6 @@ class NBA_GPP_Simulator:
                 in_lineup.fill(0)
             lineup = []
             player_teams = []
-            def_opps = []
             players_opposing_def = 0
             lineup_matchups = []
             k = 0
@@ -886,7 +856,7 @@ class NBA_GPP_Simulator:
                     prob_list = prob_list / prob_list.sum()
                     try:
                         choice = rng.choice(plyr_list, p=prob_list)
-                    except:
+                    except Exception:
                         print(plyr_list, prob_list)
                         print("find failed on nonstack and first player selection")
                     choice_idx = np.nonzero(ids == choice)[0]
@@ -908,9 +878,7 @@ class NBA_GPP_Simulator:
                             )[0]
                         else:
                             valid_players = np.nonzero(
-                                (pos > 0)
-                                & (in_lineup == 0)
-                                & (salaries <= remaining_salary)
+                                (pos > 0) & (in_lineup == 0) & (salaries <= remaining_salary)
                             )[0]
                         # grab names of players eligible
                         plyr_list = ids[valid_players]
@@ -919,10 +887,7 @@ class NBA_GPP_Simulator:
                         prob_list = prob_list / prob_list.sum()
                         if k == total_players - 1:
                             boosted_salaries = np.array(
-                                [
-                                    salary_boost(s, salary_ceiling)
-                                    for s in salaries[valid_players]
-                                ]
+                                [salary_boost(s, salary_ceiling) for s in salaries[valid_players]]
                             )
                             boosted_probabilities = prob_list * boosted_salaries
                             boosted_probabilities /= (
@@ -933,7 +898,7 @@ class NBA_GPP_Simulator:
                                 choice = rng.choice(plyr_list, p=boosted_probabilities)
                             else:
                                 choice = rng.choice(plyr_list, p=prob_list)
-                        except:
+                        except Exception:
                             # if remaining_salary <= np.min(salaries):
                             #     reject_counters["salary_too_high"] += 1
                             # else:
@@ -942,7 +907,6 @@ class NBA_GPP_Simulator:
                             proj = 0
                             lineup = []
                             player_teams = []
-                            def_opps = []
                             players_opposing_def = 0
                             lineup_matchups = []
                             in_lineup.fill(0)  # Reset the in_lineup array
@@ -957,15 +921,11 @@ class NBA_GPP_Simulator:
                         lineup_matchups.append(matchups[choice_idx[0]])
                         if max_players_per_team is not None:
                             team_count = Counter(player_teams)
-                            if any(
-                                count > max_players_per_team
-                                for count in team_count.values()
-                            ):
+                            if any(count > max_players_per_team for count in team_count.values()):
                                 salary = 0
                                 proj = 0
                                 lineup = []
                                 player_teams = []
-                                def_opps = []
                                 players_opposing_def = 0
                                 lineup_matchups = []
                                 in_lineup.fill(0)  # Reset the in_lineup array
@@ -981,9 +941,7 @@ class NBA_GPP_Simulator:
                             )[0]
                         else:
                             valid_players = np.nonzero(
-                                (pos > 0)
-                                & (in_lineup == 0)
-                                & (salaries <= remaining_salary)
+                                (pos > 0) & (in_lineup == 0) & (salaries <= remaining_salary)
                             )[0]
                         # grab names of players eligible
                         plyr_list = ids[valid_players]
@@ -992,10 +950,7 @@ class NBA_GPP_Simulator:
                         prob_list = prob_list / prob_list.sum()
                         if k == total_players - 1:
                             boosted_salaries = np.array(
-                                [
-                                    salary_boost(s, salary_ceiling)
-                                    for s in salaries[valid_players]
-                                ]
+                                [salary_boost(s, salary_ceiling) for s in salaries[valid_players]]
                             )
                             boosted_probabilities = prob_list * boosted_salaries
                             boosted_probabilities /= (
@@ -1006,12 +961,11 @@ class NBA_GPP_Simulator:
                                 choice = rng.choice(plyr_list, p=boosted_probabilities)
                             else:
                                 choice = rng.choice(plyr_list, p=prob_list)
-                        except:
+                        except Exception:
                             salary = 0
                             proj = 0
                             lineup = []
                             player_teams = []
-                            def_opps = []
                             players_opposing_def = 0
                             lineup_matchups = []
                             in_lineup.fill(0)  # Reset the in_lineup array
@@ -1030,15 +984,11 @@ class NBA_GPP_Simulator:
                         lineup_matchups.append(matchups[choice_idx[0]])
                         if max_players_per_team is not None:
                             team_count = Counter(player_teams)
-                            if any(
-                                count > max_players_per_team
-                                for count in team_count.values()
-                            ):
+                            if any(count > max_players_per_team for count in team_count.values()):
                                 salary = 0
                                 proj = 0
                                 lineup = []
                                 player_teams = []
-                                def_opps = []
                                 players_opposing_def = 0
                                 lineup_matchups = []
                                 in_lineup.fill(0)  # Reset the in_lineup array
@@ -1056,10 +1006,7 @@ class NBA_GPP_Simulator:
                     if len(set(lineup_matchups)) > 1:
                         if max_players_per_team is not None:
                             team_count = Counter(player_teams)
-                            if all(
-                                count <= max_players_per_team
-                                for count in team_count.values()
-                            ):
+                            if all(count <= max_players_per_team for count in team_count.values()):
                                 reject = False
                                 lus[lu_num] = {
                                     "Lineup": lineup,
@@ -1221,7 +1168,7 @@ class NBA_GPP_Simulator:
                 current_player_start_time = self.get_start_time(current_player)
 
                 # Look for a swap candidate among primary positions
-                for primary_i, primary_pos in enumerate(
+                for primary_i, _primary_pos in enumerate(
                     self.roster_construction[:5]
                 ):  # Only the primary positions (0 to 4)
                     primary_player = lineup[primary_i]
@@ -1250,7 +1197,7 @@ class NBA_GPP_Simulator:
             )
 
         nk = new_keys[0]
-        for i, o in enumerate(output):
+        for _i, o in enumerate(output):
             lineup_list = sorted(next(iter(o.values()))["Lineup"])
             lineup_set = frozenset(lineup_list)
 
@@ -1335,9 +1282,7 @@ class NBA_GPP_Simulator:
             for i in range(N):
                 for j in range(N):
                     if i == j:
-                        matrix[i][j] = (
-                            players[i]["StdDev"] ** 2
-                        )  # Variance on the diagonal
+                        matrix[i][j] = players[i]["StdDev"] ** 2  # Variance on the diagonal
                         corr_matrix[i][j] = 1
                     else:
                         matrix[i][j] = (
@@ -1376,7 +1321,7 @@ class NBA_GPP_Simulator:
                 cov=covariance_matrix,
                 size=num_iterations,
             )
-        except:
+        except Exception:
             print(team1_id, team2_id, "bad matrix")
 
         player_samples = []
@@ -1494,7 +1439,6 @@ class NBA_GPP_Simulator:
 
         start_time = time.time()
         temp_fpts_dict = {}
-        size = self.num_iterations
         game_simulation_params = []
         for m in self.matchups:
             game_simulation_params.append(
@@ -1555,9 +1499,7 @@ class NBA_GPP_Simulator:
         payout_array = np.array(list(self.payout_structure.values()))
         # subtract entry fee
         payout_array = payout_array - self.entry_fee
-        l_array = np.full(
-            shape=self.field_size - len(payout_array), fill_value=-self.entry_fee
-        )
+        l_array = np.full(shape=self.field_size - len(payout_array), fill_value=-self.entry_fee)
         payout_array = np.concatenate((payout_array, l_array))
         field_lineups_keys_array = np.array(list(self.field_lineups.keys()))
 
@@ -1600,13 +1542,11 @@ class NBA_GPP_Simulator:
             if idx in wins:
                 self.field_lineups[idx]["Wins"] += win_counts[np.where(wins == idx)][0]
             if idx in top1pct:
-                self.field_lineups[idx]["Top1Percent"] += top1pct_counts[
-                    np.where(top1pct == idx)
-                ][0]
+                self.field_lineups[idx]["Top1Percent"] += top1pct_counts[np.where(top1pct == idx)][
+                    0
+                ]
             if idx in cashes:
-                self.field_lineups[idx]["Cashes"] += cash_counts[
-                    np.where(cashes == idx)
-                ][0]
+                self.field_lineups[idx]["Cashes"] += cash_counts[np.where(cashes == idx)][0]
 
         end_time = time.time()
         diff = end_time - start_time
@@ -1633,10 +1573,8 @@ class NBA_GPP_Simulator:
             own_p = []
             lu_names = []
             lu_teams = []
-            players_vs_def = 0
-            def_opps = []
             for id in x["Lineup"]:
-                for k, v in self.player_dict.items():
+                for _k, v in self.player_dict.items():
                     if v["ID"] == id:
                         salary += v["Salary"]
                         fpts_p += v["Fpts"]
@@ -1658,13 +1596,11 @@ class NBA_GPP_Simulator:
             own_p = np.prod(own_p)
             win_p = round(x["Wins"] / self.num_iterations * 100, 2)
             top10_p = round((x["Top1Percent"] / self.num_iterations) * 100, 2)
-            cash_p = round(x["Cashes"] / self.num_iterations * 100, 2)
+            round(x["Cashes"] / self.num_iterations * 100, 2)
             simDupes = x["Count"]
             if self.site == "dk":
                 if self.use_contest_data:
-                    roi_p = round(
-                        x["ROI"] / self.entry_fee / self.num_iterations * 100, 2
-                    )
+                    roi_p = round(x["ROI"] / self.entry_fee / self.num_iterations * 100, 2)
                     roi_round = round(x["ROI"] / self.num_iterations, 2)
                     lineup_str = (
                         f"{lu_names[0].replace('#', '-')}"
@@ -1707,9 +1643,7 @@ class NBA_GPP_Simulator:
                     )
             elif self.site == "fd":
                 if self.use_contest_data:
-                    roi_p = round(
-                        x["ROI"] / self.entry_fee / self.num_iterations * 100, 2
-                    )
+                    roi_p = round(x["ROI"] / self.entry_fee / self.num_iterations * 100, 2)
                     roi_round = round(x["ROI"] / self.num_iterations, 2)
                     lineup_str = (
                         f"{x['Lineup'][0]}:{lu_names[0].replace('#', '-')},"
@@ -1762,17 +1696,15 @@ class NBA_GPP_Simulator:
                         "PG,PG,SG,SG,SF,SF,PF,PF,C,Fpts Proj,Field Fpts Proj,Ceiling,Salary,Win %,Top 1%,Proj. Own. Product,Own. Sum,Stack1 Type,Stack2 Type,Lineup Type,Sim Dupes\n"
                     )
 
-            for fpts, lineup_str in unique.items():
-                f.write("%s\n" % lineup_str)
+            for _fpts, lineup_str in unique.items():
+                f.write(f"{lineup_str}\n")
 
         out_path = os.path.join(
             os.path.dirname(__file__),
             f"../output/{self.site}_gpp_sim_player_exposure_{self.field_size}_{self.num_iterations}.csv",
         )
         with open(out_path, "w") as f:
-            f.write(
-                "Player,Position,Team,Win%,Top1%,Sim. Own%,Proj. Own%,Avg. Return\n"
-            )
+            f.write("Player,Position,Team,Win%,Top1%,Sim. Own%,Proj. Own%,Avg. Return\n")
             unique_players = {}
             for val in self.field_lineups.values():
                 for player in val["Lineup"]:
@@ -1791,16 +1723,14 @@ class NBA_GPP_Simulator:
                             unique_players[player]["Top1Percent"] + val["Top1Percent"]
                         )
                         unique_players[player]["In"] += val["Count"]
-                        unique_players[player]["ROI"] = (
-                            unique_players[player]["ROI"] + val["ROI"]
-                        )
+                        unique_players[player]["ROI"] = unique_players[player]["ROI"] + val["ROI"]
 
             for player, data in unique_players.items():
                 field_p = round(data["In"] / self.field_size * 100, 2)
                 win_p = round(data["Wins"] / self.num_iterations * 100, 2)
                 top10_p = round(data["Top1Percent"] / self.num_iterations, 2)
                 roi_p = round(data["ROI"] / data["In"] / self.num_iterations, 2)
-                for k, v in self.player_dict.items():
+                for _k, v in self.player_dict.items():
                     if player == v["ID"]:
                         proj_own = v["Ownership"]
                         p_name = v["Name"]

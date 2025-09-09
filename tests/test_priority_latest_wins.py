@@ -65,9 +65,7 @@ def test_latest_wins_tiebreaker() -> None:
     df1_same.loc[:, "updated_ts"] = "2025-11-01T16:00:00.000Z"
     df2_same = df2.copy()
     df2_same.loc[:, "updated_ts"] = "2025-11-01T16:00:00.000Z"
-    deduped2 = apply_latest_wins_priority(
-        pd.concat([df1_same, df2_same], ignore_index=True)
-    )
+    deduped2 = apply_latest_wins_priority(pd.concat([df1_same, df2_same], ignore_index=True))
     assert len(deduped2) == 1
     # manual should beat other on tie
     assert deduped2.iloc[0]["source"] == "manual"

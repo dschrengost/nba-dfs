@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +33,7 @@ def test_run_id_determinism(tmp_path: Path, monkeypatch):
     class FakeDT:
         @staticmethod
         def now(tz=None):
-            return datetime(2025, 11, 1, 18, 0, 0, tzinfo=timezone.utc)
+            return datetime(2025, 11, 1, 18, 0, 0, tzinfo=UTC)
 
     monkeypatch.setattr(field, "datetime", FakeDT)
 
@@ -47,9 +47,7 @@ def test_run_id_determinism(tmp_path: Path, monkeypatch):
                 "variant_params": {"_": None},
                 "export_csv_row": ",".join(
                     f"{s} p{i}"
-                    for i, s in enumerate(
-                        ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"], start=0
-                    )
+                    for i, s in enumerate(["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"], start=0)
                 ),
             }
         ]

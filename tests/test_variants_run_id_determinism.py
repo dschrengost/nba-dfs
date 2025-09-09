@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -25,15 +25,12 @@ def test_run_id_determinism(tmp_path: Path, monkeypatch):
     class FakeDT:
         @staticmethod
         def now(tz=None):
-            return datetime(2025, 11, 1, 18, 0, 0, tzinfo=timezone.utc)
+            return datetime(2025, 11, 1, 18, 0, 0, tzinfo=UTC)
 
     monkeypatch.setattr(var, "datetime", FakeDT)
 
     slate_id = "20251101_NBA"
-    dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    ]
+    dk_pos = [{"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]]
     players = [f"p{i}" for i in range(8)]
     base = {
         "run_id": "rid",

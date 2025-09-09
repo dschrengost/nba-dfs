@@ -8,9 +8,7 @@ from processes.field_sampler import injection_model as fs
 from validators.lineup_rules import DK_SLOTS_ORDER, LineupValidator
 
 
-def test_build_field_creates_artifacts(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_build_field_creates_artifacts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     projections = pd.DataFrame(
         [
             {"player_id": "p1", "team": "A", "positions": "PG", "salary": 10000},
