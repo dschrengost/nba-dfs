@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from processes.field_sampler import injection_model as fs
-from validators.lineup_rules import DK_SLOTS_ORDER, LineupValidator
+from validators import Rules, validate_lineup
 
 
 def test_build_field_creates_artifacts(
@@ -48,8 +48,21 @@ def test_build_field_creates_artifacts(
     assert metrics["field_merged_count"] == 2
     assert merged[1]["source"] == "injected"
 
-    pool = projections
-    validator = LineupValidator()
+    # Build player pool for validation
+    player_pool = {}
+    for _, row in projections.iterrows():
+        player_id = str(row["player_id"])
+        positions = str(row.get("positions", "")).split("/")
+        player_pool[player_id] = {
+            "salary": int(row.get("salary", 0)),
+            "positions": [p.strip() for p in positions if p.strip()],
+            "team": str(row.get("team", "")),
+            "is_active": True,
+            "inj_status": "",
+        }
+    
+    rules = Rules()
     for row in merged:
-        lineup = list(zip(DK_SLOTS_ORDER, row["players"], strict=False))
-        assert validator.validate(lineup, pool)
+        player_ids = row["players"]
+        result = validate_lineup(player_ids, player_pool, rules)
+        assert result.valid

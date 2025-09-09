@@ -9,7 +9,8 @@ from pathlib import Path
 import pandas as pd
 
 from src.runs.api import _git_branch, gen_run_id
-from validators.lineup_rules import DK_SLOTS_ORDER, LineupValidator
+from validators import Rules, validate_lineup
+from validators.types import DK_SLOTS_ORDER
 
 __all__ = ["BuildParams", "build_variant_catalog"]
 
@@ -70,14 +71,28 @@ def build_variant_catalog(params: BuildParams) -> Path:
     pool = pd.read_csv(params.player_pool).set_index("player_id")
     pool_df = pool.reset_index()
 
-    validator = LineupValidator()
+    # Build player pool dict for shared validator
+    player_pool = {}
+    for _, row in pool_df.iterrows():
+        player_id = str(row["player_id"])
+        positions = str(row.get("positions", "")).split("/")
+        player_pool[player_id] = {
+            "salary": int(row.get("salary", 0)),
+            "positions": [p.strip() for p in positions if p.strip()],
+            "team": str(row.get("team", "")),
+            "is_active": True,  # Assume active
+            "inj_status": "",   # No injury status
+        }
+    
+    rules = Rules()
 
     params.output_path.parent.mkdir(parents=True, exist_ok=True)
     with params.output_path.open("w", encoding="utf-8") as out:
         for lineup in _load_optimizer_run(params.optimizer_run):
-            if not validator.validate(lineup, pool_df):
-                raise ValueError("Invalid lineup in optimizer run")
             player_ids = [pid for _, pid in lineup]
+            result = validate_lineup(player_ids, player_pool, rules)
+            if not result.valid:
+                raise ValueError("Invalid lineup in optimizer run")
             sub = pool.loc[player_ids]
             record = {
                 "lineup": player_ids,

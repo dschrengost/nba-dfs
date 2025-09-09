@@ -15,10 +15,10 @@ Contract (stdin):
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
-from typing import Any, Dict, List
-import os
+from typing import Any
 
 # Ensure repo root is on sys.path so `processes.*` is importable when running from scripts/
 _HERE = os.path.dirname(__file__)
@@ -28,9 +28,10 @@ if _ROOT not in sys.path:
 # Ensure downstream helpers resolve paths relative to repo root
 os.environ.setdefault("PROJECT_ROOT", _ROOT)
 
-import pandas as pd
 from collections import Counter
 from itertools import combinations
+
+import pandas as pd
 
 
 def _stderr(msg: str) -> None:
@@ -74,7 +75,7 @@ def main() -> int:
     seed = int(req.get("seed", 42))
 
     # Build projections DataFrame from either inline `players` OR a file path
-    players: List[Dict[str, Any]] = req.get("players") or []
+    players: list[dict[str, Any]] = req.get("players") or []
     projections_path = req.get("projectionsPath")
 
     def _norm_cols(df_in: pd.DataFrame) -> pd.DataFrame:
@@ -92,7 +93,7 @@ def main() -> int:
         return None
 
     if players:
-        rows: List[Dict[str, Any]] = []
+        rows: list[dict[str, Any]] = []
         for p in players:
             pos = p.get("position") or ""
             if isinstance(pos, list):
@@ -267,7 +268,7 @@ def main() -> int:
         return 0
 
     # Build constraints (allow passthrough dict from caller)
-    cons_in: Dict[str, Any] = req.get("constraints") or {}
+    cons_in: dict[str, Any] = req.get("constraints") or {}
     # Map common caller knobs if present
     max_salary = cons_in.get("max_salary") or cons_in.get("salary_cap") or None
     min_salary = cons_in.get("min_salary")
@@ -308,7 +309,7 @@ def main() -> int:
             )
         elapsed_ms = int(round((time.time() - t0) * 1000))
         # Convert to JSON-able structure
-        def pl2json(pl) -> Dict[str, Any]:
+        def pl2json(pl) -> dict[str, Any]:
             return {
                 "player_id": pl.player_id,
                 "name": pl.name,

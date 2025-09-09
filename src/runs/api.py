@@ -5,11 +5,10 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 try:
     # Python 3.9+ zoneinfo
@@ -21,7 +20,7 @@ except Exception:  # pragma: no cover
 NY_TZ = ZoneInfo("America/New_York") if ZoneInfo else None
 
 
-def gen_slate_key(dt: Optional[datetime] = None) -> str:
+def gen_slate_key(dt: datetime | None = None) -> str:
     """Generate a slate key in YY-MM-DD_HHMMSS using America/New_York local time."""
     if dt is None:
         now = datetime.now(timezone.utc)
@@ -43,7 +42,7 @@ def _git_branch() -> str:
         return "local"
 
 
-def gen_run_id(dt: Optional[datetime] = None, branch: Optional[str] = None) -> str:
+def gen_run_id(dt: datetime | None = None, branch: str | None = None) -> str:
     ts = gen_slate_key(dt)
     slug = (branch or _git_branch())[:24]
     return f"{ts}__{slug}"
@@ -72,8 +71,8 @@ class SaveResult:
 def save_run(
     slate_key: str,
     module: str,
-    meta: Dict[str, Any],
-    artifacts: Optional[Dict[str, Any]] = None,
+    meta: dict[str, Any],
+    artifacts: dict[str, Any] | None = None,
     keep_last: int = 10,
 ) -> SaveResult:
     """
@@ -130,7 +129,7 @@ def _evict_oldest(root: Path, keep_last: int) -> None:
         return
     run_dirs = [p for p in root.iterdir() if p.is_dir() and not p.name.startswith("__tmp__")]
     # sort by created_at in meta if present, else mtime
-    def _key(p: Path) -> Tuple[float, str]:
+    def _key(p: Path) -> tuple[float, str]:
         meta_p = p / "run_meta.json"
         ts = p.stat().st_mtime
         try:
@@ -151,7 +150,7 @@ def _evict_oldest(root: Path, keep_last: int) -> None:
             pass
 
 
-def get_run(slate_key: str, module: str, run_id: str) -> Dict[str, Any]:
+def get_run(slate_key: str, module: str, run_id: str) -> dict[str, Any]:
     base = Path("runs") / slate_key / module / run_id
     meta_p = base / "run_meta.json"
     if not meta_p.exists():
@@ -159,16 +158,16 @@ def get_run(slate_key: str, module: str, run_id: str) -> Dict[str, Any]:
     return json.loads(meta_p.read_text())
 
 
-def list_runs(slate_key: str, module: str, limit: int = 10) -> List[Dict[str, Any]]:
+def list_runs(slate_key: str, module: str, limit: int = 10) -> list[dict[str, Any]]:
     base = Path("runs") / slate_key / module
     if not base.exists():
         return []
-    rows: List[Dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
     for p in base.iterdir():
         if not p.is_dir() or p.name.startswith("__tmp__"):
             continue
         meta_p = p / "run_meta.json"
-        meta: Dict[str, Any]
+        meta: dict[str, Any]
         try:
             meta = json.loads(meta_p.read_text()) if meta_p.exists() else {}
         except Exception:

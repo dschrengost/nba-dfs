@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional
-
+from typing import Any, Literal
 
 SiteType = Literal["dk", "fd"]
 
@@ -21,8 +20,8 @@ class OptimizerError(Exception):
         self,
         code: ErrorCodes,
         message: str,
-        user_message: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        user_message: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message)
         self.code = code
@@ -50,7 +49,7 @@ class OwnershipPenalty:
     tol_offoptimal_pct: float = 0.01
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any] | None) -> Optional["OwnershipPenalty"]:
+    def from_dict(cls, d: dict[str, Any] | None) -> OwnershipPenalty | None:
         if not d:
             return None
         return cls(**{k: v for k, v in d.items() if k in cls().__dict__})
@@ -62,33 +61,33 @@ class Constraints:
     N_lineups: int = 1
     unique_players: int = 0
     # salary
-    max_salary: Optional[int] = None
-    min_salary: Optional[int] = None
+    max_salary: int | None = None
+    min_salary: int | None = None
     # teams
-    global_team_limit: Optional[int] = None
-    team_limits: Dict[str, int] = field(default_factory=dict)
+    global_team_limit: int | None = None
+    team_limits: dict[str, int] = field(default_factory=dict)
     # player include/exclude
-    lock_ids: List[str] = field(default_factory=list)
-    ban_ids: List[str] = field(default_factory=list)
+    lock_ids: list[str] = field(default_factory=list)
+    ban_ids: list[str] = field(default_factory=list)
     # filters
     proj_min: float = 0.0
     # randomness (CBC)
     randomness_pct: float = 0.0
     # solver params (CP-SAT)
-    cp_sat_params: Dict[str, Any] = field(default_factory=dict)
+    cp_sat_params: dict[str, Any] = field(default_factory=dict)
     # ownership penalty
-    ownership_penalty: Optional[OwnershipPenalty] = None
+    ownership_penalty: OwnershipPenalty | None = None
     # DK strictness toggle in legacy code
     require_dk_ids: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         if self.ownership_penalty is not None:
             d["ownership_penalty"] = asdict(self.ownership_penalty)
         return d
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any] | None) -> "Constraints":
+    def from_dict(cls, d: dict[str, Any] | None) -> Constraints:
         if not d:
             return cls()
         d2 = dict(d)
@@ -107,10 +106,10 @@ class Player:
     team: str
     salary: int
     proj: float
-    dk_id: Optional[str] = None
-    own_proj: Optional[float] = None
-    minutes: Optional[float] = None
-    stddev: Optional[float] = None
+    dk_id: str | None = None
+    own_proj: float | None = None
+    minutes: float | None = None
+    stddev: float | None = None
 
 
 @dataclass
@@ -118,4 +117,4 @@ class Lineup:
     lineup_id: int
     total_proj: float
     total_salary: int
-    players: List[Player]
+    players: list[Player]

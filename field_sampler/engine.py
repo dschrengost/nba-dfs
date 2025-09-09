@@ -11,11 +11,8 @@ from typing import Any
 
 import pandas as pd
 
-from validators.lineup_rules import (
-    DK_SLOTS_ORDER,
-    POSITION_ELIGIBILITY,
-    LineupValidator,
-)
+from validators import Rules, validate_lineup
+from validators.types import DK_POSITION_ELIGIBILITY, DK_SLOTS_ORDER
 
 
 @dataclass
@@ -25,7 +22,7 @@ class PositionAllocator:
     def eligible(self, slot: str, taken: set[str]) -> pd.DataFrame:
         mask = ~self.pool["player_id"].isin(taken)
         subset = self.pool[mask]
-        allowed = POSITION_ELIGIBILITY.get(slot, set())
+        allowed = DK_POSITION_ELIGIBILITY.get(slot, set())
         elig_mask = subset["positions"].apply(
             lambda s: bool(allowed & set(str(s).split("/")))
         )
@@ -102,9 +99,23 @@ class SamplerEngine:
     out_dir: Path = Path("artifacts")
 
     def generate(self, n: int) -> dict[str, Any]:
-        validator = LineupValidator(
+        rules = Rules(
             salary_cap=self.salary_cap, max_per_team=self.max_per_team
         )
+        
+        # Build player pool for shared validator
+        player_pool = {}
+        for _, row in self.projections.iterrows():
+            player_id = str(row["player_id"])
+            positions = str(row.get("positions", "")).split("/")
+            player_pool[player_id] = {
+                "salary": int(row.get("salary", 0)),
+                "positions": [p.strip() for p in positions if p.strip()],
+                "team": str(row.get("team", "")),
+                "is_active": True,
+                "inj_status": "",
+            }
+        
         rng = random.Random(self.seed)
         allocator = PositionAllocator(self.projections)
         field: list[dict[str, Any]] = []
@@ -117,9 +128,8 @@ class SamplerEngine:
             lineup = sampler.sample_lineup()
             if lineup is None:
                 continue
-            if not validator.validate(
-                list(zip(DK_SLOTS_ORDER, lineup, strict=False)), self.projections
-            ):
+            result = validate_lineup(lineup, player_pool, rules)
+            if not result.valid:
                 continue
             field.append({"players": lineup, "source": "public"})
         meta = self._write_outputs(field)

@@ -9,7 +9,7 @@ from typing import Any
 
 import pandas as pd
 
-from validators.lineup_rules import DK_SLOTS_ORDER, LineupValidator
+from validators import Rules, validate_lineup
 
 
 def _utc_now() -> str:
@@ -37,20 +37,32 @@ def build_field(
     variant_catalog: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
     rng = random.Random(seed)
-    validator = LineupValidator(salary_cap=salary_cap, max_per_team=max_per_team)
+    rules = Rules(salary_cap=salary_cap, max_per_team=max_per_team)
 
     pool = projections[["player_id", "team", "salary", "positions"]]
     players = pool.to_dict("records")
+    
+    # Build player pool dict for shared validator
+    player_pool = {}
+    for _, row in pool.iterrows():
+        player_id = str(row["player_id"])
+        positions = str(row.get("positions", "")).split("/")
+        player_pool[player_id] = {
+            "salary": int(row.get("salary", 0)),
+            "positions": [p.strip() for p in positions if p.strip()],
+            "team": str(row.get("team", "")),
+            "is_active": True,
+            "inj_status": "",
+        }
 
     base: list[dict[str, Any]] = []
     attempts = 0
     while len(base) < field_size and attempts < 10000:
         rng.shuffle(players)
-        lineup = list(
-            zip(DK_SLOTS_ORDER, [p["player_id"] for p in players[:8]], strict=False)
-        )
-        if validator.validate(lineup, pool):
-            base.append({"players": [pid for _, pid in lineup]})
+        lineup_player_ids = [p["player_id"] for p in players[:8]]
+        result = validate_lineup(lineup_player_ids, player_pool, rules)
+        if result.valid:
+            base.append({"players": lineup_player_ids})
         else:
             attempts += 1
 
@@ -79,8 +91,9 @@ def build_field(
     injected = 0
     if variant_catalog is not None and len(variant_catalog):
         for _, row in variant_catalog.iterrows():
-            lineup = list(zip(DK_SLOTS_ORDER, list(row["players"]), strict=False))
-            if validator.validate(lineup, pool):
+            lineup_player_ids = list(row["players"])
+            result = validate_lineup(lineup_player_ids, player_pool, rules)
+            if result.valid:
                 entry = {
                     "players": list(row["players"]),
                     "run_id": run_id,

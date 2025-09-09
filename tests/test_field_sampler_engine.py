@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from field_sampler.engine import SamplerEngine
-from validators.lineup_rules import DK_SLOTS_ORDER, LineupValidator
+from validators.types import DK_SLOTS_ORDER
 
 hypothesis = pytest.importorskip("hypothesis")
 from hypothesis import HealthCheck, given, settings  # noqa: E402

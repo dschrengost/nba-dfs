@@ -16,6 +16,7 @@ import pandas as pd
 
 from pipeline.io.files import ensure_dir, write_parquet
 from pipeline.io.validate import load_schema, validate_obj
+from validators import Rules, ValidationResult, validate_lineup
 
 # Resolve repo root (two levels up from this file) and schemas root
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -264,34 +265,63 @@ def export_csv_row(
     return ",".join(cols)
 
 
-def _sanity_check_lineup(
-    players: Sequence[Any],
-    dk_positions_filled: Sequence[Mapping[str, Any]],
-    total_salary: int | float,
-) -> None:
-    if len(players) != 8:
-        raise ValueError(f"Invalid lineup: expected 8 players, got {len(players)}")
-    if len(dk_positions_filled) != 8:
-        raise ValueError(
-            f"Invalid lineup: expected 8 DK slots, got {len(dk_positions_filled)}"
-        )
-    slots = {str(s.get("slot")) for s in dk_positions_filled}
-    if set(DK_SLOTS_ORDER) != slots:
-        raise ValueError(
-            f"Invalid DK slots: expected {DK_SLOTS_ORDER}, got {sorted(slots)}"
-        )
-    try:
-        if int(total_salary) > 50000:
-            raise ValueError(
-                f"Invalid lineup salary: {total_salary} exceeds DK cap 50000"
-            )
-    except Exception:
-        raise ValueError(f"Invalid lineup salary value: {total_salary}")
+def _build_player_pool(projections_df: pd.DataFrame) -> dict[str, dict[str, Any]]:
+    """Build player pool dict for validator from projections DataFrame."""
+    player_pool = {}
+    for _, row in projections_df.iterrows():
+        dk_player_id = str(row.get("dk_player_id", ""))
+        if not dk_player_id:
+            continue
+        
+        # Parse positions - handle both string and list formats
+        positions_raw = row.get("pos", "")
+        if isinstance(positions_raw, str):
+            positions = [p.strip() for p in positions_raw.replace("/", ",").split(",") if p.strip()]
+        else:
+            positions = list(positions_raw) if positions_raw else []
+        
+        if not positions:
+            positions = ["UTIL"]
+        
+        player_pool[dk_player_id] = {
+            "salary": int(row.get("salary", 0)),
+            "positions": positions,
+            "team": str(row.get("team", "")),
+            "is_active": row.get("is_active", True),
+            "inj_status": row.get("inj_status", ""),
+        }
+    
+    return player_pool
+
+
+def _validate_lineup_with_shared_validator(
+    players: Sequence[str],
+    player_pool: dict[str, dict[str, Any]],
+    rules: Rules,
+) -> ValidationResult:
+    """Validate lineup using shared validator and raise on error."""
+    result = validate_lineup(list(players), player_pool, rules)
+    if not result.valid:
+        reasons_str = ", ".join([r.value for r in result.reasons])
+        raise ValueError(f"Invalid lineup: {reasons_str}")
+    return result
 
 
 def _build_lineups_df(
-    run_id: str, lineups: Sequence[Mapping[str, Any]]
-) -> pd.DataFrame:
+    run_id: str, lineups: Sequence[Mapping[str, Any]], projections_df: pd.DataFrame
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    # Build player pool for validation
+    player_pool = _build_player_pool(projections_df)
+    rules = Rules()
+    
+    # Track validation metrics
+    validation_metrics = {
+        "total_lineups": len(lineups),
+        "valid_lineups": 0,
+        "invalid_lineups": 0,
+        "reasons_count": {},
+    }
+    
     rows: list[dict[str, Any]] = []
     for i, lp in enumerate(lineups, start=1):
         players = list(lp.get("players") or [])
@@ -309,9 +339,22 @@ def _build_lineups_df(
         if "own_proj" in lp:
             row["own_proj"] = float(lp["own_proj"])  # optional
         row["export_csv_row"] = export_csv_row(players, dk_pos)
-        _sanity_check_lineup(players, dk_pos, int(row["total_salary"]))
+        
+        # Use shared validator
+        try:
+            validation_result = _validate_lineup_with_shared_validator(players, player_pool, rules)
+            validation_metrics["valid_lineups"] += 1
+            # Don't add validation fields to row - keep schema compatibility
+        except ValueError as e:
+            validation_metrics["invalid_lineups"] += 1
+            # Track validation failure reasons  
+            error_msg = str(e)
+            validation_metrics["reasons_count"][error_msg] = validation_metrics["reasons_count"].get(error_msg, 0) + 1
+            # Still add the row but track as invalid internally
+            
         rows.append(row)
-    return pd.DataFrame(rows)
+    
+    return pd.DataFrame(rows), validation_metrics
 
 
 def _build_metrics_df(run_id: str, lineups_df: pd.DataFrame) -> pd.DataFrame:
@@ -432,8 +475,14 @@ def run_adapter(
     artifacts_dir = run_dir / "artifacts"
     ensure_dir(artifacts_dir)
 
-    lineups_df = _build_lineups_df(run_id, lineups)
+    lineups_df, validation_metrics = _build_lineups_df(run_id, lineups, projections_df)
     metrics_df = _build_metrics_df(run_id, lineups_df)
+    
+    # Write validation metrics
+    validation_metrics_path = artifacts_dir / "validation_metrics.json"
+    validation_metrics_path.write_text(
+        json.dumps(validation_metrics, indent=2), encoding="utf-8"
+    )
 
     # Validate lineups & metrics against their schemas before any write (fail fast)
     lineups_schema = load_schema(schemas_root / "optimizer_lineups.schema.yaml")

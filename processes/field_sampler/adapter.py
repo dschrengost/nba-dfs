@@ -14,6 +14,7 @@ import pandas as pd
 
 from pipeline.io.files import ensure_dir, write_parquet
 from pipeline.io.validate import load_schema, validate_obj
+from validators import Rules, validate_lineup
 
 # Resolve repo root (two levels up from this file) and schemas root
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -190,13 +191,50 @@ def _schema_version(schemas_root: Path | None, name: str) -> str:
     return str(schema.get("version", "0.0.0"))
 
 
-def _sanity_check_entrant(entry: Mapping[str, Any]) -> None:
+def _build_minimal_player_pool(player_ids: list[str]) -> dict[str, dict[str, Any]]:
+    """Build minimal player pool for validation when full player data not available."""
+    player_pool = {}
+    for pid in player_ids:
+        player_pool[pid] = {
+            "salary": 0,  # Unknown salary - validation will only check structure
+            "positions": ["UTIL"],  # Default to UTIL for unknown positions
+            "team": "UNK",  # Unknown team
+            "is_active": True,
+            "inj_status": "",
+        }
+    return player_pool
+
+
+def _validate_entrant_with_shared_validator(entry: Mapping[str, Any]) -> tuple[bool, str]:
+    """Validate field entrant using shared validator."""
     players = list(entry.get("players") or [])
-    if len(players) != 8:
-        raise ValueError(
-            f"Invalid field entrant: expected 8 players, got {len(players)}"
-        )
-    # If export CSV preview present, ensure it covers 8 slots (order-only check)
+    
+    # Build minimal player pool 
+    player_pool = _build_minimal_player_pool(players)
+    
+    # Use relaxed rules for field sampler (no salary/team limits)
+    rules = Rules(
+        salary_cap=999999,  # No salary limit since we don't have salary data
+        max_per_team=8,     # No team limit since we don't have reliable team data
+        check_active_status=False,
+        check_injury_status=False,
+    )
+    
+    result = validate_lineup(players, player_pool, rules)
+    if result.valid:
+        return (True, "")
+    else:
+        reasons_str = ", ".join([r.value for r in result.reasons])
+        return (False, reasons_str)
+
+
+def _sanity_check_entrant(entry: Mapping[str, Any]) -> None:
+    """Validate field entrant using shared validator."""
+    valid, reason = _validate_entrant_with_shared_validator(entry)
+    if not valid:
+        raise ValueError(f"Invalid field entrant: {reason}")
+    
+    # Additional field-specific checks
     row = str(entry.get("export_csv_row") or "")
     if row:
         parts = [p.strip() for p in row.split(",") if p.strip()]
@@ -204,10 +242,27 @@ def _sanity_check_entrant(entry: Mapping[str, Any]) -> None:
             raise ValueError("Invalid export_csv_row: expected 8 slot tokens")
 
 
-def _build_field_df(run_id: str, entrants: Sequence[Mapping[str, Any]]) -> pd.DataFrame:
+def _build_field_df(run_id: str, entrants: Sequence[Mapping[str, Any]]) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Build field DataFrame with validation metrics tracking."""
+    # Track validation metrics
+    validation_metrics = {
+        "total_entrants": len(entrants),
+        "valid_entrants": 0,
+        "invalid_entrants": 0,
+        "reasons_count": {},
+    }
+    
     rows: list[dict[str, Any]] = []
     for i, e in enumerate(entrants, start=1):
-        _sanity_check_entrant(e)
+        try:
+            _sanity_check_entrant(e)
+            validation_metrics["valid_entrants"] += 1
+        except ValueError as ex:
+            validation_metrics["invalid_entrants"] += 1
+            # Track validation failure reasons
+            error_msg = str(ex)
+            validation_metrics["reasons_count"][error_msg] = validation_metrics["reasons_count"].get(error_msg, 0) + 1
+        
         origin = str(e.get("origin") or "variant")
         if origin not in ("variant", "optimizer", "external"):
             origin = "external"
@@ -224,7 +279,8 @@ def _build_field_df(run_id: str, entrants: Sequence[Mapping[str, Any]]) -> pd.Da
         if "lineup_id" in e:
             row["lineup_id"] = str(e["lineup_id"])  # optional by schema
         rows.append(row)
-    return pd.DataFrame(rows)
+    
+    return pd.DataFrame(rows), validation_metrics
 
 
 def _build_metrics_df(run_id: str, field_df: pd.DataFrame) -> pd.DataFrame:
@@ -364,7 +420,7 @@ def run_adapter(
         entrants = list(entrants_obj)  # type: ignore[arg-type]
 
     # Build artifacts in-memory and validate (fail-fast) before any writes
-    field_df = _build_field_df(run_id, entrants)
+    field_df, validation_metrics = _build_field_df(run_id, entrants)
     metrics_df = _build_metrics_df(run_id, field_df)
     if validate:
         field_schema = load_schema(schemas_root / "field.schema.yaml")
@@ -384,6 +440,12 @@ def run_adapter(
     # Write artifacts
     write_parquet(field_df, field_path)
     write_parquet(metrics_df, metrics_path)
+    
+    # Write validation metrics
+    validation_metrics_path = artifacts_dir / "validation_metrics.json"
+    validation_metrics_path.write_text(
+        json.dumps(validation_metrics, indent=2), encoding="utf-8"
+    )
 
     # Manifest
     manifest = {

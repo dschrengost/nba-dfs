@@ -10,6 +10,7 @@ import pandas as pd
 from typing import Any
 
 from src.config import paths
+from validators import Rules, validate_lineup
 
 # ---------- Data models ----------
 @dataclass(frozen=True)
@@ -563,34 +564,39 @@ def _pick_bucket_for_base(cfg: Config, base_salary: int) -> Tuple[int, int]:
 
 
 # ----------- Validator utility -----------
+def _build_player_pool_dict(pool: Dict[str, Player]) -> Dict[str, Dict]:
+    """Convert Player objects to dict format for shared validator."""
+    player_pool = {}
+    for pid, player in pool.items():
+        player_pool[pid] = {
+            "salary": player.salary,
+            "positions": player.positions,
+            "team": player.team,
+            "is_active": True,  # Assume active for variant builder
+            "inj_status": "",   # No injury status in variant builder
+        }
+    return player_pool
+
+
 def _validate_lineup(pool: Dict[str, Player], lineup: List[str], lo: int | None = None, hi: int | None = None) -> tuple[bool, str]:
-    """Hard validator: slot-assignable to exactly the 8 DK slots and salary within [lo,hi] if provided.
+    """Hard validator using shared validator: slot-assignable to exactly the 8 DK slots and salary within [lo,hi] if provided.
     Returns (ok, reason_if_not_ok).
     """
-    # Reject duplicate players
-    if len(lineup) != len(set(lineup)):
-        return (False, "duplicate player(s) in lineup")
-    # IDs exist
-    for pid in lineup:
-        if pid not in pool:
-            return (False, f"unknown player_id {pid}")
-    # Slot feasibility must assign exactly 8 unique DK slots
-    assign = _assign_slots(pool, lineup)
-    if assign is None:
-        return (False, "slot assignment failed")
-    if len(assign) != 8:
-        return (False, f"assigned {len(assign)} slots (expected 8)")
-    used_slots = {s for s, _ in assign}
-    if used_slots != set(SLOTS):
-        return (False, f"assigned slots mismatch: {sorted(used_slots)}")
-    # Salary bounds
-    if lo is not None or hi is not None:
-        sal = _salary(pool, lineup)
-        if lo is not None and sal < lo:
-            return (False, f"salary {sal} < lo {lo}")
-        if hi is not None and sal > hi:
-            return (False, f"salary {sal} > hi {hi}")
-    return (True, "")
+    # Convert to shared validator format
+    player_pool = _build_player_pool_dict(pool)
+    rules = Rules(
+        salary_cap=hi if hi is not None else 50000,
+        min_salary=lo,
+        check_active_status=False,  # Skip active checks in variant builder
+        check_injury_status=False,  # Skip injury checks in variant builder
+    )
+    
+    result = validate_lineup(lineup, player_pool, rules)
+    if result.valid:
+        return (True, "")
+    else:
+        reasons_str = ", ".join([r.value for r in result.reasons])
+        return (False, reasons_str)
 
 def _greedy_variant(
     base: List[str],
