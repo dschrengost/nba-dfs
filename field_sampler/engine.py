@@ -22,7 +22,7 @@ class PositionAllocator:
     def eligible(self, slot: str, taken: set[str]) -> pd.DataFrame:
         mask = ~self.pool["player_id"].isin(taken)
         subset = self.pool[mask]
-        allowed = DK_POSITION_ELIGIBILITY.get(slot, set())
+        allowed = set(DK_POSITION_ELIGIBILITY.get(slot, []))
         elig_mask = subset["positions"].apply(
             lambda s: bool(allowed & set(str(s).split("/")))
         )
