@@ -274,11 +274,17 @@ def _build_player_pool(projections_df: pd.DataFrame) -> dict[str, dict[str, Any]
             continue
         
         # Parse positions - handle both string and list formats
-        positions_raw = row.get("pos", "")
+        positions_raw = row.get("pos")
         if isinstance(positions_raw, str):
-            positions = [p.strip() for p in positions_raw.replace("/", ",").split(",") if p.strip()]
+            positions = [
+                p.strip()
+                for p in positions_raw.replace("/", ",").split(",")
+                if p.strip()
+            ]
+        elif isinstance(positions_raw, Sequence):
+            positions = [str(p).strip() for p in positions_raw if str(p).strip()]
         else:
-            positions = list(positions_raw) if positions_raw else []
+            positions = []
         
         if not positions:
             positions = ["UTIL"]
