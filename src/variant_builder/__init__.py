@@ -74,10 +74,12 @@ def build_variant_catalog(params: BuildParams) -> Path:
 
     params.output_path.parent.mkdir(parents=True, exist_ok=True)
     with params.output_path.open("w", encoding="utf-8") as out:
+        slot_order = {slot: i for i, slot in enumerate(DK_SLOTS_ORDER)}
         for lineup in _load_optimizer_run(params.optimizer_run):
             if not validator.validate(lineup, pool_df):
                 raise ValueError("Invalid lineup in optimizer run")
-            player_ids = [pid for _, pid in lineup]
+            ordered = sorted(lineup, key=lambda pair: slot_order[pair[0]])
+            player_ids = [pid for _, pid in ordered]
             sub = pool.loc[player_ids]
             record = {
                 "lineup": player_ids,
