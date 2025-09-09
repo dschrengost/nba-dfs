@@ -1,0 +1,4 @@
+# file: /Users/danielschrengost/Projects/nba-dfs/processes/field_sampler/engine.py
+# hypothesis_version: 6.138.15
+
+[0.01, 0.1, 1.0, 100, 1000, 10000, 50000, '%Y-%m-%dT%H:%M:%SZ', ',', '/', 'attempts', 'audit_fs.md', 'created_at', 'data', 'dk', 'entrant_id', 'export_csv_row', 'field', 'field_base', 'field_base.jsonl', 'field_base_count', 'field_merged.jsonl', 'field_merged_count', 'generated', 'injected_count', 'invalid_attempts', 'metrics.json', 'origin', 'owner', 'ownership', 'player_id', 'players', 'positions', 'public', 'records', 'ruleset_version', 'run_id', 'salary', 'seed', 'site', 'slate_id', 'source', 'team', 'utf-8', 'v1', 'variant', 'w', 'weight']

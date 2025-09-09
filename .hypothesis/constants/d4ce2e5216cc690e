@@ -1,0 +1,4 @@
+# file: /Users/danielschrengost/Projects/nba-dfs/field_sampler/engine.py
+# hypothesis_version: 6.138.15
+
+[0.0, 1.0, 1000, 50000, '/', '1', 'artifacts', 'attempts', 'created_at', 'dk', 'field_base.jsonl', 'field_base_count', 'field_path', 'field_size', 'max_per_team', 'metrics.json', 'metrics_path', 'out_dir', 'ownership', 'player_id', 'players', 'positions', 'public', 'ruleset_version', 'run_id', 'salary', 'salary_cap', 'seed', 'site', 'slate_id', 'source', 'team', 'utf-8', 'w']

@@ -1,0 +1,4 @@
+# file: /Users/danielschrengost/Projects/nba-dfs/processes/gpp_sim/engine.py
+# hypothesis_version: 6.138.15
+
+[0.0, 0.95, 'buy_in', 'count', 'dup', 'dup_count', 'entries', 'entry_count', 'finish', 'first', 'itm_pct', 'lineup_id', 'max', 'mean', 'mergesort', 'min', 'net', 'p95', 'payout', 'place', 'player_ids', 'player_set', 'prize', 'proj_points', 'roi', 'score', 'sum', 'total_fees', 'total_prizes', 'unique_lineups', '|']

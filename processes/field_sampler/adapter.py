@@ -5,7 +5,7 @@ import hashlib
 import json
 import os
 import sys
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
@@ -155,7 +155,8 @@ def _find_input_variant_catalog(
         if not required.issubset(set(map(str, df.columns))):
             missing = sorted(required - set(map(str, df.columns)))
             raise ValueError(
-                f"Registry missing required columns {missing}. Re-run upstream variants to populate registry."
+                f"Registry missing required columns {missing}. "
+                "Re-run upstream variants to populate registry."
             )
         filt = df[(df.get("run_type") == "variants") & (df.get("slate_id") == slate_id)]
         if not filt.empty:
@@ -361,7 +362,8 @@ def run_adapter(
         entrants = list(entrants_obj)
     else:
         # Attempt to coerce generic iterables of mappings
-        entrants = list(entrants_obj)  # type: ignore[arg-type]
+        assert isinstance(entrants_obj, Iterable)
+        entrants = list(entrants_obj)
 
     # Build artifacts in-memory and validate (fail-fast) before any writes
     field_df = _build_field_df(run_id, entrants)
@@ -497,13 +499,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         cfg = load_config(args.config, args.config_kv)
         unknown = sorted(set(cfg.keys()) - known - {"extras"})
         if unknown:
+            unknown_keys = ", ".join(unknown)
             print(
-                f"[field] Warning: unknown config keys ignored/passthrough: {', '.join(unknown)}",
+                f"[field] Warning: unknown config keys ignored/passthrough: "
+                f"{unknown_keys}",
                 file=sys.stderr,
             )
         inputs_msg = ",".join(result.get("variant_catalog_paths", []))
+        run_id = result.get("run_id")
+        entrants = result.get("entrants")
         print(
-            f"[field] input={inputs_msg} run_id={result.get('run_id')} entrants={result.get('entrants')}",
+            f"[field] input={inputs_msg} run_id={run_id} entrants={entrants}",
             file=sys.stderr,
         )
     return 0

@@ -1,0 +1,4 @@
+# file: /Users/danielschrengost/Projects/nba-dfs/src/runs/api.py
+# hypothesis_version: 6.138.15
+
+[0.0, 86400.0, '%y-%m-%d_%H%M%S', '+00:00', '-', '--abbrev-ref', '.tmp', 'America/New_York', 'HEAD', 'PROJECT_ROOT', 'Z', '[^A-Za-z0-9_.-]', '__tmp__', '_json', '_ts', 'artifacts', 'created_at', 'git', 'inputs_hash.json', 'local', 'meta', 'module', 'path', 'rev-parse', 'run_id', 'run_meta.json', 'runs', 'schema_version', 'slate_key', 'tag', 'tag.txt', 'utf-8']

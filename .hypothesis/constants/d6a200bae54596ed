@@ -1,0 +1,4 @@
+# file: /Users/danielschrengost/Projects/nba-dfs/processes/api/app.py
+# hypothesis_version: 6.138.15
+
+[400, 404, 422, 500, '/export/dk/{run_id}', '/health', '/logs/{run_id}', '/metrics/{run_id}', '/run/orchestrator', '/runs', '/runs/{run_id}', '0.1.0', 'api_enter', 'api_exit', 'bundle_id', 'bundle_path', 'config.json', 'count', 'data', 'dedupe', 'detail', 'dt_s', 'endpoint', 'error', 'event', 'export_csv_row', 'field', 'ingest', 'internal_error', 'invalid_export', 'json', 'kind', 'logs', 'logs not available', 'logs.txt', 'manifest.json', 'message', 'metrics', 'metrics not found', 'metrics.parquet', 'model', 'name', 'not_found', 'ok', 'optimizer', 'outputs', 'path', 'primary_output', 'processes.api', 'records', 'registry', 'registry not found', 'registry_path', 'rows', 'run not found', 'run_id', 'run_type', 'runs', 'runs.parquet', 'sim', 'slate_id', 'stages', 'text/csv', 'time', 'top_n', 'unsupported_run_type', 'utf-8', 'variant_catalog', 'variants', 'version']

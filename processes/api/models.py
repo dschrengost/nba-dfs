@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ErrorResponse(BaseModel):
@@ -73,9 +73,11 @@ class OrchestratorRunRequest(BaseModel):
     config: OrchestratorConfig
     out_root: str = "data"
     schemas_root: str = "pipeline/schemas"
-    validate: bool = True
+    validate_flag: bool = Field(alias="validate", default=True)
     dry_run: bool = False
     verbose: bool = False
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class StageSummary(BaseModel):

@@ -1,0 +1,58 @@
+# PRP-FS-04 — Field Sampler Duplication Audit
+
+## Goal
+Identify and resolve the existence of **two different field sampler implementations** in the repo (`field_sampler/engine.py` vs `processes/field_sampler/engine.py`), which has caused confusion and inconsistent test coverage. Deliver a **detailed written report** under `docs/` that documents the current state, issues, and recommended remediation plan.
+
+## Scope
+- Search **entire repo** for any `field_sampler` modules:
+  - `field_sampler/engine.py`
+  - `processes/field_sampler/engine.py`
+  - Any other `field_sampler/` dirs or imports.
+- Track which one the **tests actually import**.
+- Track which one is wired into the pipeline (`adapter.py`, CLI, etc.).
+- Identify duplicated logic, drift, or conflicting fixes across the two engines.
+- Assess how each implementation interacts with:
+  - `validators/`
+  - `variant_builder`
+  - downstream `gpp_sim`
+
+## Tasks
+1. **Inventory**
+   - List all `field_sampler` files and their relative imports.
+   - Show where each is referenced (tests, adapters, CLI entrypoints).
+2. **Compare Implementations**
+   - Summarize structural differences between `field_sampler/engine.py` and `processes/field_sampler/engine.py`.
+   - Call out duplicated classes/functions (e.g., `SamplerEngine`, `PositionAllocator`).
+   - Note any drift (e.g., one has NaN eligibility fix, the other doesn’t).
+3. **Test Imports**
+   - Confirm which module(s) current test suite points at.
+   - Highlight skipped or shadowed tests caused by import confusion.
+4. **Pipeline Impact**
+   - Trace how data flows through sampler → validator → gpp_sim.
+   - Identify which engine is actually feeding downstream modules.
+5. **Recommendations**
+   - Decide on **single source of truth (SSOT)** location.
+   - Propose migration strategy:
+     - Keep `processes/field_sampler/engine.py` as SSOT.
+     - Turn top-level `field_sampler/engine.py` into a thin shim (deprecated import).
+     - Add a guard test ensuring both imports resolve to the same file.
+   - Flag required updates in CI (`mypy`, excludes).
+6. **Deliverable**
+   - Write a **detailed markdown report** under `docs/FS-03-Field-Sampler-Duplication-Report.md`.
+   - Report should have:
+     - Inventory of files/imports
+     - Implementation diffs
+     - Current usage in code/tests
+     - Risks posed by duplication
+     - Clear SSOT + migration plan
+
+## Acceptance Criteria
+- New file exists: `docs/FS-03-Field-Sampler-Duplication-Report.md`.
+- Report comprehensively covers inventory, differences, test imports, and pipeline impacts.
+- Concrete recommendation made for SSOT + deprecation path.
+- CI/test plan included to enforce single-source going forward.
+
+## Notes for Agent
+- Do not delete or refactor code in this PRP.
+- Your job is **diagnosis + documentation only**.
+- Deliverable is the written report. All code changes will come in a follow-up PRP.

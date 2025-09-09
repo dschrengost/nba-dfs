@@ -1,0 +1,4 @@
+# file: /Users/danielschrengost/Projects/nba-dfs/field_sampler/__init__.py
+# hypothesis_version: 6.138.15
+
+['SamplerEngine', 'run_sampler']

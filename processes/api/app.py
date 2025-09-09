@@ -79,7 +79,7 @@ def run_orchestrator(
             config_kv=None,
             out_root=out_root,
             schemas_root=schemas_root,
-            validate=req.validate,
+            validate=req.validate_flag,
             dry_run=req.dry_run,
             verbose=req.verbose,
         )

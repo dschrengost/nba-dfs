@@ -1,0 +1,4 @@
+# file: /Users/danielschrengost/Projects/nba-dfs/processes/dk_export/writer.py
+# hypothesis_version: 6.138.15
+
+[',', 'C', 'F', 'G', 'PF', 'PG', 'SF', 'SG', 'UTIL', 'entrant_id', 'ev', 'export_csv_row', 'field', 'inputs', 'kind', 'manifest.json', 'outputs', 'path', 'prize', 'role', 'runs', 'sim', 'sim_results', 'utf-8']

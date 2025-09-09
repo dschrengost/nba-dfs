@@ -113,6 +113,12 @@ warn_return_any = false
 module = [
   "processes.optimizer._legacy",
   "processes.optimizer._legacy.*",
+  "processes.variants._legacy",
+  "processes.variants._legacy.*",
+  "processes.field_sampler._legacy",
+  "processes.field_sampler._legacy.*",
+  "processes.gpp_sim._legacy",
+  "processes.gpp_sim._legacy.*",
 ]
 ignore_errors = true
 

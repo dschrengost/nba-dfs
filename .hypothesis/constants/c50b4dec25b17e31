@@ -1,0 +1,4 @@
+# file: /Users/danielschrengost/Projects/nba-dfs/src/variant_builder/__init__.py
+# hypothesis_version: 6.138.15
+
+[1000, '--optimizer-run', '--out', '--player-pool', '--run-id', '--site', '--slate-id', 'BuildParams', 'DK', '__main__', 'created_at', 'lineup', 'player_id', 'players', 'r', 'run_id', 'salary', 'salary_total', 'site', 'slate_id', 'slot', 'slots', 'source_branch', 'tags', 'team', 'teams', 'utf-8', 'valid', 'w']

@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "module": "optimizer",
+  "slate_key": "25-09-07_225130",
+  "engine": {
+    "solver": "cp_sat",
+    "seed": 1
+  },
+  "params": {
+    "uniques": 1,
+    "ownership_penalty": {
+      "enabled": true,
+      "lambda": 8.0,
+      "curve": "sigmoid"
+    }
+  },
+  "diagnostics": {
+    "pool": {
+      "lineups": 100,
+      "avg_overlap_players": 5.049292929292929,
+      "avg_pairwise_jaccard": 0.4702494721888725,
+      "unique_player_count": 27,
+      "exposures": {
+        "36385877": 0.98,
+        "36385843": 0.8,
+        "36385935": 0.91,
+        "36385927": 0.52,
+        "36385559": 1.0,
+        "36385719": 0.21,
+        "36385774": 0.34,
+        "36385861": 0.81,
+        "36385943": 0.49,
+        "36385726": 0.16,
+        "36385812": 0.29,
+        "36385814": 0.27,
+        "36385702": 0.12,
+        "36385792": 0.13,
+        "36385759": 0.1,
+        "36385911": 0.08,
+        "36385786": 0.11,
+        "36385755": 0.19,
+        "36385742": 0.02,
+        "36385657": 0.12,
+        "36385711": 0.08,
+        "36385671": 0.08,
+        "36385904": 0.13,
+        "36385920": 0.02,
+        "36385806": 0.02,
+        "36385799": 0.01,
+        "36385832": 0.01
+      }
+    }
+  },
+  "run_id": "25-09-09_122144__main",
+  "created_at": "2025-09-09T16:21:44.202358Z",
+  "artifacts": {
+    "lineups_json": "artifacts/lineups_json",
+    "diagnostics_json": "artifacts/diagnostics_json",
+    "summary_json": "artifacts/summary_json"
+  }
+}
