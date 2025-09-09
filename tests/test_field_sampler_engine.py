@@ -75,6 +75,20 @@ def test_salary_violation_rejected(tmp_path: Path) -> None:
         assert "bad" not in cast(list[str], row["players"])
 
 
+@pytest.mark.parametrize("drop", [True, False])  # type: ignore[misc]
+def test_uniform_weights_without_ownership(tmp_path: Path, drop: bool) -> None:
+    projections = pd.read_csv(Path("tests/fixtures/mini_slate.csv"))
+    if drop:
+        projections = projections.drop(columns=["ownership"])
+    else:
+        projections["ownership"] = 0.0
+    eng = SamplerEngine(projections, seed=9, out_dir=tmp_path)
+    meta = eng.generate(1)
+    rows = _read_base(tmp_path / "field_base.jsonl")
+    assert meta["field_base_count"] == 1
+    assert len(rows) == 1
+
+
 @settings(max_examples=5, suppress_health_check=[HealthCheck.function_scoped_fixture])  # type: ignore[misc]
 @given(st.integers(min_value=12, max_value=18))  # type: ignore[misc]
 def test_property_valid_lineups(tmp_path: Path, n_players: int) -> None:

@@ -73,7 +73,13 @@ class RejectionSampler:
             elig = elig[elig["team"].apply(self.teams.can_add)]
             if elig.empty:
                 return None
-            weights = elig.get("ownership").fillna(1.0).astype(float)
+            weights = (
+                elig["ownership"].astype(float).fillna(0.0).tolist()
+                if "ownership" in elig.columns
+                else [0.0] * len(elig)
+            )
+            if sum(weights) <= 0:
+                weights = [1.0] * len(weights)
             player = self.rng.choices(elig["player_id"].tolist(), weights=weights, k=1)[
                 0
             ]
