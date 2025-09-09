@@ -117,3 +117,33 @@ class RunRegistryRow(BaseModel):
 
 class RunsListResponse(BaseModel):
     runs: list[RunRegistryRow]
+
+
+# PRP-ORCH-01 Models for One-Command End-to-End API
+
+
+class OrchestratedRunRequest(BaseModel):
+    slate: str
+    contest: str
+    seed: int
+    variants_config: str  # Path to variants config YAML
+    optimizer_config: str  # Path to optimizer config YAML
+    sampler_config: str  # Path to sampler config YAML
+    sim_config: str  # Path to sim config YAML
+    tag: str | None = None
+    out_root: str = "data"
+    schemas_root: str | None = None
+    dry_run: bool = False
+    verbose: bool = False
+
+
+class MetricsHead(BaseModel):
+    roi_mean: float | None = None
+    roi_p50: float | None = None
+    dup_p95: float | None = None
+
+
+class OrchestratedRunResponse(BaseModel):
+    run_id: str
+    artifact_path: str
+    metrics_head: MetricsHead

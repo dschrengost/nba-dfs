@@ -1,0 +1,171 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://nba-dfs.schemas/run_manifest.schema.yaml"
+title: "Run Manifest for Orchestrated E2E Pipeline"
+description: "Captures module versions, seeds, paths, and timings for a complete orchestrated run."
+version: "0.1.0"
+type: object
+additionalProperties: false
+properties:
+  schema_version:
+    type: string
+  run_id:
+    $ref: "./common.types.yaml#/definitions/RunId"
+  slate_id:
+    $ref: "./common.types.yaml#/definitions/SlateId"
+  created_ts:
+    $ref: "./common.types.yaml#/definitions/UtcTimestamp"
+  contest:
+    type: string
+    description: "Contest identifier for the run"
+  tag:
+    type: string
+    description: "Optional tag for this run"
+  modules:
+    type: object
+    additionalProperties: false
+    properties:
+      variants:
+        $ref: "#/definitions/ModuleInfo"
+      optimizer:
+        $ref: "#/definitions/ModuleInfo"
+      field_sampler:
+        $ref: "#/definitions/ModuleInfo"
+      gpp_sim:
+        $ref: "#/definitions/ModuleInfo"
+    required: [variants, optimizer, field_sampler, gpp_sim]
+  seeds:
+    type: object
+    additionalProperties: false
+    properties:
+      global:
+        type: integer
+        description: "Global seed used for all modules"
+      variants:
+        type: integer
+      optimizer:
+        type: integer
+      field_sampler:
+        type: integer
+      gpp_sim:
+        type: integer
+    required: [global]
+  artifact_paths:
+    type: object
+    additionalProperties: false
+    properties:
+      variants_catalog:
+        type: string
+      variants_summary:
+        type: string
+      optimizer_lineups:
+        type: string
+      optimizer_dk_export:
+        type: string
+      optimizer_metrics:
+        type: string
+      field_entrants:
+        type: string
+      field_telemetry:
+        type: string
+      field_metrics:
+        type: string
+      sim_results:
+        type: string
+      sim_metrics:
+        type: string
+      summary:
+        type: string
+    required: [optimizer_lineups, optimizer_dk_export, sim_metrics, summary]
+  timings:
+    type: object
+    additionalProperties: false
+    properties:
+      total_duration_ms:
+        type: integer
+        minimum: 0
+      variants_duration_ms:
+        type: integer
+        minimum: 0
+      optimizer_duration_ms:
+        type: integer
+        minimum: 0
+      field_sampler_duration_ms:
+        type: integer
+        minimum: 0
+      gpp_sim_duration_ms:
+        type: integer
+        minimum: 0
+    required: [total_duration_ms]
+  git_rev:
+    type: string
+    description: "Git HEAD short hash at runtime"
+definitions:
+  ModuleInfo:
+    type: object
+    additionalProperties: false
+    properties:
+      version:
+        type: string
+        description: "Module version or git commit hash"
+      run_id:
+        $ref: "./common.types.yaml#/definitions/RunId"
+      manifest_path:
+        type: string
+      config:
+        type: object
+        additionalProperties: true
+    required: [version, run_id, manifest_path]
+required: [schema_version, run_id, slate_id, created_ts, modules, seeds, artifact_paths]
+examples:
+  - schema_version: "0.1.0"
+    run_id: "20251009-143000-abc12345"
+    slate_id: "25-10-09_1430"
+    created_ts: "2025-10-09T14:30:00.123Z"
+    contest: "DK_MME_20"
+    tag: "mvp-e2e"
+    modules:
+      variants:
+        version: "deadbeef"
+        run_id: "20251009_143001_variant1"
+        manifest_path: "runs/25-10-09_1430/20251009-143000-abc12345/variants/manifest.json"
+        config: { num_variants: 100 }
+      optimizer:
+        version: "deadbeef"
+        run_id: "20251009_143002_optim1"
+        manifest_path: "runs/25-10-09_1430/20251009-143000-abc12345/optimizer/manifest.json"
+        config: { num_lineups: 50 }
+      field_sampler:
+        version: "deadbeef"
+        run_id: "20251009_143003_field1"
+        manifest_path: "runs/25-10-09_1430/20251009-143000-abc12345/field_sampler/manifest.json"
+        config: { sample_size: 1000 }
+      gpp_sim:
+        version: "deadbeef"
+        run_id: "20251009_143004_sim1"
+        manifest_path: "runs/25-10-09_1430/20251009-143000-abc12345/sim/manifest.json"
+        config: { iterations: 10000 }
+    seeds:
+      global: 1337
+      variants: 1337
+      optimizer: 1337
+      field_sampler: 1337
+      gpp_sim: 1337
+    artifact_paths:
+      variants_catalog: "runs/25-10-09_1430/20251009-143000-abc12345/variants/catalog.parquet"
+      variants_summary: "runs/25-10-09_1430/20251009-143000-abc12345/variants/summary.json"
+      optimizer_lineups: "runs/25-10-09_1430/20251009-143000-abc12345/optimizer/lineups.parquet"
+      optimizer_dk_export: "runs/25-10-09_1430/20251009-143000-abc12345/optimizer/dk_export.csv"
+      optimizer_metrics: "runs/25-10-09_1430/20251009-143000-abc12345/optimizer/metrics.json"
+      field_entrants: "runs/25-10-09_1430/20251009-143000-abc12345/field_sampler/entrants.parquet"
+      field_telemetry: "runs/25-10-09_1430/20251009-143000-abc12345/field_sampler/telemetry.json"
+      field_metrics: "runs/25-10-09_1430/20251009-143000-abc12345/field_sampler/metrics.json"
+      sim_results: "runs/25-10-09_1430/20251009-143000-abc12345/sim/results.parquet"
+      sim_metrics: "runs/25-10-09_1430/20251009-143000-abc12345/sim/metrics.json"
+      summary: "runs/25-10-09_1430/20251009-143000-abc12345/export/summary.md"
+    timings:
+      total_duration_ms: 45000
+      variants_duration_ms: 5000
+      optimizer_duration_ms: 15000
+      field_sampler_duration_ms: 10000
+      gpp_sim_duration_ms: 15000
+    git_rev: "deadbeef"
