@@ -1,0 +1,145 @@
+ ⎿ PRP-VB-01 Variant Builder Audit and Alignment Plan
+
+    Executive Summary
+
+    After auditing PRP-VB-01 against the current codebase, 
+    I've identified significant alignment issues between 
+    the PRP specification and the current implementation. 
+    The current variant_builder.py is a legacy 
+    implementation that doesn't conform to the PRP's data 
+    contracts, folder structure, or architectural 
+    principles.
+
+    Key Findings
+
+    ✅ Aligned Elements
+
+    - Basic purpose: generating DK-compliant lineup 
+    variants
+    - Core DK position validation logic (_is_valid_slots, 
+    _assign_slots)
+    - Deterministic seeding approach
+    - Basic salary range constraints (DK_SAL_LO/HI)
+
+    ❌ Major Misalignments
+
+    1. Data Contracts Breach
+
+    - PRP expects: runs/{run_id}/optimizer/lineups.parquet 
+    with schema optimizer_lineups.schema.yaml
+    - Current: Uses arbitrary file paths with custom 
+    CSV/Parquet parsing
+    - PRP expects: 
+    runs/{run_id}/variant_builder/variants.parquet + 
+    diagnostics.parquet + manifest.json 
+    - Current: Outputs simple long-format CSV/Parquet 
+    without proper schema adherence
+
+    2. Architecture Violation
+
+    - PRP specifies: /src/vb/ folder structure with 
+    schemas.py, io.py, algo.py, rules.py, scoring.py, 
+    cli.py
+    - Current: Monolithic single file in 
+    processes/variants/variant_builder.py
+    - PRP expects: Pydantic models + Parquet schemas
+    - Current: Uses dataclasses + manual pandas parsing
+
+    3. Pipeline Integration Broken
+
+    - Missing: Run registry integration 
+    (runs_registry.schema.yaml)
+    - Missing: Manifest generation matching 
+    manifest.schema.yaml
+    - Missing: Schema validation using 
+    pipeline/io/validate.py
+    - Missing: Proper integration with existing adapter.py 
+    orchestration
+
+    4. Schema Compliance Issues
+
+    - Current implementation doesn't validate against 
+    existing schemas
+    - Player ID handling inconsistent with 
+    players.schema.yaml (dk_player_id field)
+    - Output format doesn't match 
+    variant_catalog.schema.yaml structure
+
+    5. Missing Components
+
+    - No diagnostics generation (diagnostics.parquet)
+    - No ownership-penalized scoring system
+    - No exposure caps enforcement
+    - No Jaccard similarity metrics
+
+    Recommended Action Plan
+
+    Phase 1: Data Contract Alignment (Critical)
+
+    1. Refactor I/O layer to use pipeline/io/files.py and 
+    pipeline/io/validate.py
+    2. Implement schema validation for all inputs/outputs 
+    using existing schema files
+    3. Fix player ID mapping to ensure dk_player_id 
+    consistency throughout pipeline
+    4. Integrate with run registry using proper run_id 
+    format and manifest generation
+
+    Phase 2: Architecture Restructuring
+
+    1. Create PRP folder structure (/src/vb/ or similar)
+    2. Split monolith into modular components (schemas, io,
+     algo, rules, scoring, cli)
+    3. Implement Pydantic models for type safety and 
+    validation
+    4. Add proper diagnostics generation with Jaccard 
+    scores, dupe detection
+
+    Phase 3: Algorithm Enhancement
+
+    1. Implement missing constraints: exposure caps, team 
+    limits, ownership penalties
+    2. Add noise-based diversification as specified in PRP 
+    algorithm section
+    3. Improve dupe detection beyond simple Hamming 
+    distance
+
+    Phase 4: Integration Testing
+
+    1. Create integration tests that validate full 
+    pipeline: optimizer → variant builder → field sampler
+    2. Verify deterministic behavior with identical seeds
+    3. Test schema validation end-to-end
+    4. Validate DK compliance throughout
+
+    Risk Assessment
+
+    HIGH RISK: The current implementation will break the 
+    data pipeline's "single source of truth" principle. 
+    Player IDs may be lost/corrupted during the variant 
+    builder step, causing downstream failures in field 
+    sampler and gpp simulator.
+
+    MEDIUM RISK: Schema version mismatches could cause 
+    validation failures when integrating with other 
+    pipeline components.
+
+    LOW RISK: Performance may be impacted by adding schema 
+    validation, but this is acceptable for data integrity.
+
+    Estimated Effort
+
+    - Phase 1: 2-3 days (critical path)
+    - Phase 2: 3-4 days 
+    - Phase 3: 2-3 days
+    - Phase 4: 1-2 days
+    - Total: 8-12 days
+
+    Recommendation
+
+    The current implementation is NOT READY for PRP 
+    execution. A significant refactor is required to align 
+    with the PRP specification and maintain data pipeline 
+    integrity. The discrepancies are too substantial to 
+    patch - a clean implementation following the PRP 
+    architecture is recommended.
