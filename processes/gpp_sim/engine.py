@@ -74,7 +74,12 @@ def run_sim(
     )
 
     entries = int(entries_df.shape[0])
-    buy_in = float(contest_sorted.get("buy_in", pd.Series([0.0])).iloc[0])
+    buy_in_series = contest_sorted.get("buy_in")
+    if buy_in_series is None or buy_in_series.empty:
+        buy_in = 0.0
+    else:
+        first_buy_in = buy_in_series.iloc[0]
+        buy_in = float(first_buy_in) if pd.notna(first_buy_in) else 0.0
     total_prizes = float(agg["prize"].sum())
     total_fees = entries * buy_in
     net = total_prizes - total_fees
