@@ -102,6 +102,14 @@
 
 ---
 
+### 2025 Update
+- Adapter ships with built-in engine (`processes.field_sampler.engine.run_sampler`).
+- Engine returns entrants/telemetry and is deterministic via a `seed` knob.
+- Tests moved under `tests/field_sampler/` covering adapter, engine and injection model.
+- No migration needed; `FIELD_SAMPLER_IMPL` still overrides the default.
+
+---
+
 ## Expected Benefits
 - Single Source of Truth across optimizer → variant builder → sampler → simulator
 - Cleaner adapter UX: users don’t manually select engines
