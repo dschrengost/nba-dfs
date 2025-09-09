@@ -6,9 +6,7 @@ from processes.dk_export.writer import DK_SLOTS_ORDER, build_export_df
 
 
 def _export_row(players: list[str]) -> str:
-    return ",".join(
-        f"{slot} {pid}" for slot, pid in zip(DK_SLOTS_ORDER, players, strict=True)
-    )
+    return ",".join(f"{slot} {pid}" for slot, pid in zip(DK_SLOTS_ORDER, players, strict=True))
 
 
 def test_dk_export_dedupe() -> None:

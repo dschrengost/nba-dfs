@@ -6,7 +6,7 @@ import json
 import os
 import sys
 from collections.abc import Callable, Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -46,9 +46,7 @@ def _coerce_scalar(val: str) -> int | float | bool | str:
         return val
 
 
-def load_config(
-    config_path: Path | None, inline_kv: Sequence[str] | None = None
-) -> dict[str, Any]:
+def load_config(config_path: Path | None, inline_kv: Sequence[str] | None = None) -> dict[str, Any]:
     cfg: dict[str, Any] = {}
     if config_path:
         text = config_path.read_text(encoding="utf-8")
@@ -232,15 +230,11 @@ def _contest_from_path(path: Path) -> dict[str, Any]:
         else:
             a, b = _parse_place(row[col("place")])
 
-        raw_prize = str(
-            row[col("prize")] if col("prize") in pdf.columns else row[col("payout")]
-        )
+        raw_prize = str(row[col("prize")] if col("prize") in pdf.columns else row[col("payout")])
         prize = float(raw_prize.replace(",", "").replace("$", "").strip())
         payout_curve.append({"rank_start": a, "rank_end": b, "prize": prize})
     # Defaults
-    field_size = sum(
-        int(p["rank_end"]) - int(p["rank_start"]) + 1 for p in payout_curve
-    )
+    field_size = sum(int(p["rank_end"]) - int(p["rank_start"]) + 1 for p in payout_curve)
     contest = {
         "contest_id": f"TEST_{path.stem}",
         "name": path.stem,
@@ -289,9 +283,7 @@ def _find_field_input(
     if explicit_field is not None:
         return explicit_field, "field"
     if from_field_run:
-        candidate = (
-            out_root / "runs" / "field" / from_field_run / "artifacts" / "field.parquet"
-        )
+        candidate = out_root / "runs" / "field" / from_field_run / "artifacts" / "field.parquet"
         if candidate.exists():
             return candidate, "field"
         raise FileNotFoundError(f"--from-field-run provided but not found: {candidate}")
@@ -319,14 +311,10 @@ def _find_contest_input(
             if p.exists():
                 return p
         raise FileNotFoundError(f"No contest file found under {from_contest_dir}")
-    raise FileNotFoundError(
-        "No contest input provided. Use --contest or --from-contest."
-    )
+    raise FileNotFoundError("No contest input provided. Use --contest or --from-contest.")
 
 
-def _build_sim_results_df(
-    run_id: str, rows: Sequence[Mapping[str, Any]]
-) -> pd.DataFrame:
+def _build_sim_results_df(run_id: str, rows: Sequence[Mapping[str, Any]]) -> pd.DataFrame:
     out: list[dict[str, Any]] = []
     for r in rows:
         row = {
@@ -405,7 +393,7 @@ def run_adapter(
 ) -> dict[str, Any]:
     schemas_root = schemas_root or SCHEMAS_ROOT
     # Mint timestamp once and reuse for created_ts and run_id core
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ms = int(now.microsecond / 1000)
     created_ts = f"{now.strftime('%Y-%m-%dT%H:%M:%S')}.{ms:03d}Z"
 
@@ -481,9 +469,7 @@ def run_adapter(
     # Compute input SHAs for determinism and manifest
     inputs_list: list[dict[str, Any]] = []
     field_sha = _sha256_of_path(field_input)
-    inputs_list.append(
-        {"path": str(field_input), "content_sha256": field_sha, "role": field_role}
-    )
+    inputs_list.append({"path": str(field_input), "content_sha256": field_sha, "role": field_role})
     contest_sha = _sha256_of_path(contest_input)
     inputs_list.append(
         {
@@ -495,9 +481,7 @@ def run_adapter(
     cfg_blob = json.dumps(cfg, sort_keys=True, separators=(",", ":")).encode("utf-8")
     cfg_sha = hashlib.sha256(cfg_blob).hexdigest()
     if config_path:
-        inputs_list.append(
-            {"path": str(config_path), "content_sha256": cfg_sha, "role": "config"}
-        )
+        inputs_list.append({"path": str(config_path), "content_sha256": cfg_sha, "role": "config"})
     if config_kv:
         kv_parsed: dict[str, Any] = {}
         for item in config_kv:
@@ -509,9 +493,7 @@ def run_adapter(
             {
                 "path": "inline:config_kv",
                 "content_sha256": hashlib.sha256(
-                    json.dumps(kv_parsed, sort_keys=True, separators=(",", ":")).encode(
-                        "utf-8"
-                    )
+                    json.dumps(kv_parsed, sort_keys=True, separators=(",", ":")).encode("utf-8")
                 ).hexdigest(),
                 "role": "config",
             }
@@ -519,9 +501,9 @@ def run_adapter(
 
     # Deterministic run_id
     run_id_core = now.strftime("%Y%m%d_%H%M%S")
-    short_hash = hashlib.sha256(
-        f"{field_sha}|{contest_sha}|{cfg_sha}|{seed}".encode()
-    ).hexdigest()[:8]
+    short_hash = hashlib.sha256(f"{field_sha}|{contest_sha}|{cfg_sha}|{seed}".encode()).hexdigest()[
+        :8
+    ]
     run_id = f"{run_id_core}_{short_hash}"
 
     # Execute simulation
@@ -585,9 +567,7 @@ def run_adapter(
     }
     if validate:
         validate_obj(manifest_schema, manifest, schemas_root=schemas_root)
-    (run_dir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2), encoding="utf-8"
-    )
+    (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     # Registry append
     registry_path = out_root / "registry" / "runs.parquet"
@@ -635,12 +615,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--from-field-run", type=str, help="Field run_id under runs/field/")
     p.add_argument("--variants", type=Path, help="Variant catalog parquet (fallback)")
     # Discovery: contest
-    p.add_argument(
-        "--contest", type=Path, help="Contest structure file (csv|parquet|json)"
-    )
-    p.add_argument(
-        "--from-contest", type=Path, help="Directory to search for contest file"
-    )
+    p.add_argument("--contest", type=Path, help="Contest structure file (csv|parquet|json)")
+    p.add_argument("--from-contest", type=Path, help="Directory to search for contest file")
     # Infra
     p.add_argument("--schemas-root", type=Path)
     p.add_argument(

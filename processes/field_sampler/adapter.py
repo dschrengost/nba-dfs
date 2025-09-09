@@ -6,7 +6,7 @@ import json
 import os
 import sys
 from collections.abc import Callable, Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -26,7 +26,7 @@ DK_SLOTS_ORDER = ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
 
 
 def _utc_now_iso() -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ms = int(now.microsecond / 1000)
     return f"{now.strftime('%Y-%m-%dT%H:%M:%S')}.{ms:03d}Z"
 
@@ -72,9 +72,7 @@ def _load_sampler() -> RunFieldSamplerFn:
     )
 
 
-def load_config(
-    config_path: Path | None, inline_kv: Sequence[str] | None = None
-) -> dict[str, Any]:
+def load_config(config_path: Path | None, inline_kv: Sequence[str] | None = None) -> dict[str, Any]:
     cfg: dict[str, Any] = {}
     if config_path:
         text = config_path.read_text(encoding="utf-8")
@@ -136,18 +134,11 @@ def _find_input_variant_catalog(
         return [explicit_input]
     if from_run:
         candidate = (
-            out_root
-            / "runs"
-            / "variants"
-            / from_run
-            / "artifacts"
-            / "variant_catalog.parquet"
+            out_root / "runs" / "variants" / from_run / "artifacts" / "variant_catalog.parquet"
         )
         if candidate.exists():
             return [candidate]
-        raise FileNotFoundError(
-            f"--from-run provided but variant_catalog not found: {candidate}"
-        )
+        raise FileNotFoundError(f"--from-run provided but variant_catalog not found: {candidate}")
     registry_path = out_root / "registry" / "runs.parquet"
     if registry_path.exists():
         df = pd.read_parquet(registry_path)
@@ -170,12 +161,7 @@ def _find_input_variant_catalog(
                 pass
             run_id = str(row.get("run_id"))
             candidate = (
-                out_root
-                / "runs"
-                / "variants"
-                / run_id
-                / "artifacts"
-                / "variant_catalog.parquet"
+                out_root / "runs" / "variants" / run_id / "artifacts" / "variant_catalog.parquet"
             )
             if candidate.exists():
                 return [candidate]
@@ -193,9 +179,7 @@ def _schema_version(schemas_root: Path | None, name: str) -> str:
 def _sanity_check_entrant(entry: Mapping[str, Any]) -> None:
     players = list(entry.get("players") or [])
     if len(players) != 8:
-        raise ValueError(
-            f"Invalid field entrant: expected 8 players, got {len(players)}"
-        )
+        raise ValueError(f"Invalid field entrant: expected 8 players, got {len(players)}")
     # If export CSV preview present, ensure it covers 8 slots (order-only check)
     row = str(entry.get("export_csv_row") or "")
     if row:
@@ -282,9 +266,7 @@ def run_adapter(
         inputs=input_paths,
     )
     cat_dfs = [pd.read_parquet(p) for p in catalogs]
-    catalog_df = (
-        pd.concat(cat_dfs, ignore_index=True) if len(cat_dfs) > 1 else cat_dfs[0]
-    )
+    catalog_df = pd.concat(cat_dfs, ignore_index=True) if len(cat_dfs) > 1 else cat_dfs[0]
 
     # Build inputs list for manifest and hashes for run_id
     schemas_root = schemas_root or SCHEMAS_ROOT
@@ -322,21 +304,19 @@ def run_adapter(
             {
                 "path": "inline:config_kv",
                 "content_sha256": hashlib.sha256(
-                    json.dumps(kv_parsed, sort_keys=True, separators=(",", ":")).encode(
-                        "utf-8"
-                    )
+                    json.dumps(kv_parsed, sort_keys=True, separators=(",", ":")).encode("utf-8")
                 ).hexdigest(),
                 "role": "config",
             }
         )
 
     # Deterministic run_id: timestamp + short hash over inputs + cfg + seed
-    ts = datetime.now(timezone.utc)
+    ts = datetime.now(UTC)
     run_id_core = ts.strftime("%Y%m%d_%H%M%S")
     short_hash = hashlib.sha256(
-        json.dumps(
-            {"inputs": cat_shas, "cfg": cfg_sha, "seed": int(seed)}, sort_keys=True
-        ).encode("utf-8")
+        json.dumps({"inputs": cat_shas, "cfg": cfg_sha, "seed": int(seed)}, sort_keys=True).encode(
+            "utf-8"
+        )
     ).hexdigest()[:8]
     run_id = f"{run_id_core}_{short_hash}"
 
@@ -402,9 +382,7 @@ def run_adapter(
     }
     if validate:
         validate_obj(manifest_schema, manifest, schemas_root=schemas_root)
-    (run_dir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2), encoding="utf-8"
-    )
+    (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 
     # Registry append
     registry_path = out_root_eff / "registry" / "runs.parquet"
@@ -450,9 +428,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--out-root", type=Path, default=Path("data"))
     p.add_argument("--tag", type=str)
     p.add_argument("--input", type=Path, help="Explicit variant_catalog parquet path")
-    p.add_argument(
-        "--inputs", nargs="*", type=Path, help="Multiple catalog paths to merge"
-    )
+    p.add_argument("--inputs", nargs="*", type=Path, help="Multiple catalog paths to merge")
     p.add_argument(
         "--from-run",
         type=str,

@@ -62,9 +62,7 @@ def write_dk_csv(df: pd.DataFrame, out_csv: Path) -> None:
     df.to_csv(out_csv, columns=DK_SLOTS_ORDER, index=False)
 
 
-def fill_entries_template(
-    entries_df: pd.DataFrame, export_df: pd.DataFrame
-) -> pd.DataFrame:
+def fill_entries_template(entries_df: pd.DataFrame, export_df: pd.DataFrame) -> pd.DataFrame:
     out = entries_df.copy()
     for i, (_, row) in enumerate(export_df.iterrows()):
         for slot in DK_SLOTS_ORDER:
@@ -84,9 +82,7 @@ def update_entries_csv(
     return out
 
 
-def discover_from_sim_run(
-    run_id: str, runs_root: Path = Path("runs")
-) -> tuple[Path, Path]:
+def discover_from_sim_run(run_id: str, runs_root: Path = Path("runs")) -> tuple[Path, Path]:
     manifest_path = runs_root / "sim" / run_id / "manifest.json"
     data = json.loads(manifest_path.read_text(encoding="utf-8"))
     sim_path: Path | None = None

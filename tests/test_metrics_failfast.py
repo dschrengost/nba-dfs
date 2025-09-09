@@ -16,4 +16,3 @@ def test_metrics_failfast_missing_sim_results(tmp_path: Path):
     # No sim_results written
     with pytest.raises(FileNotFoundError):
         metrics.run_adapter(from_sim_run=missing_run_id, out_root=out_root)
-

@@ -23,9 +23,7 @@ def _stub_run_sampler(catalog_df: pd.DataFrame, knobs: dict[str, Any], seed: int
                 "origin": "variant",
                 "variant_id": str(row.get("variant_id", "V")),
                 "players": players,
-                "export_csv_row": str(
-                    row.get("export_csv_row") or _export_row(players)
-                ),
+                "export_csv_row": str(row.get("export_csv_row") or _export_row(players)),
                 "weight": 1.0,
             }
         )

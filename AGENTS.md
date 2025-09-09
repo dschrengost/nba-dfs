@@ -1,141 +1,107 @@
-# AGENTS.md — NBA-DFS
+# Purpose & Scope
+This document outlines the guidelines and best practices for agents working within the NBA DFS project. It aims to ensure consistency, clarity, and efficiency across all contributions.
 
-## 1) Purpose & Scope
-Define how our coding agent works in this repo: rules, structure, contracts, CI gates, and safety rails so contributions are deterministic, reproducible, and clean.
+# Core Principles
+- Maintain high code quality and readability.
+- Ensure reproducibility and determinism in data pipelines.
+- Prioritize automation and testing.
+- Foster clear communication and documentation.
 
-## 2) Core Principles
-- **Determinism & Repro**: Every run is seed‑controlled and artifacted.
-- **Repo hygiene**: Single source of truth in `src/`; no ad‑hoc scripts.
-- **Small, reviewed changes**: Prefer narrow PRs with PRP when crossing modules.
-- **Data contracts first**: Schemas and IO adapters are versioned and tested.
-- **Idempotent tooling**: Re-running the same inputs + seed yields same outputs.
+# Repo Layout
+- `src/`: Source code and modules.
+- `data/`: Raw and processed datasets.
+- `tests/`: Unit and integration tests.
+- `configs/`: Configuration files and secrets.
+- `docs/`: Documentation and process guidelines.
 
-## 3) Repo Layout (monorepo)
-```
-/src
-/data/
-  raw/          # user uploads (read-only to agent)
-  external/
-  interim/
-  processed/
-/runs/          # run registry; immutable by agent
-  YYMMDD_HHMMSS/<stage>/...
-/configs/       # defaults.yaml (tracked) + local.yaml (gitignored)
-/tests/
-/docs/
-/ui/            # future
-```
-> Agent: Do not create new top-level dirs without a PRP.
+# Tech Stack & Versions
+- Python 3.9+
+- PostgreSQL 13
+- Docker 20.x
+- GitHub Actions for CI/CD
 
-## 4) Tech Stack & Versions
-- **Python**: “latest on dev box”. Treat as **runtime >= current local**; avoid 3.13-only features unless required.
-- **Env & deps**: Use **UV** for env + locking.
-- **Format/Lint/Type**: `ruff`, `black`, `mypy`.
-- **Typing level**: **TBD** (owner to decide). Default: strict in `src/` for new modules; best‑effort elsewhere.
+# Data Pipeline Contracts
+- All data transformations must adhere to defined schemas.
+- Version data contracts explicitly in the codebase.
+- Migrations require clear documentation and backward compatibility.
 
-## 5) Data Pipeline Contracts
-### Inputs (user uploads)
-- `projections.csv`, `player_ids.csv` are required at start of slate.
-- Any source → normalize to **house schema** before downstream use.
+# Slate & Keys
+- Slates represent game groupings; keys uniquely identify players and games.
+- Ensure keys are stable and consistent across datasets.
 
-### House schemas (minimum)
-**Players** (`player_ids.csv` normalized → `processed/players.parquet`)
-```
-player_id_dk (str, unique per slate)
-player_name (str)
-team (str, 3‑letter)
-pos_primary (str)   # DK compliant
-pos_secondary (str|nullable)
-```
-**Projections** (`projections.csv` normalized → `processed/projections.parquet`)
-```
-player_id_dk (str, FK → players)
-salary (int)
-proj_fp (float)
-mins (float|nullable)
-ownership (float|nullable)
-ceiling (float|nullable)
-floor (float|nullable)
-source (str)        # original feed/source
-version_ts (ts)     # when this file was produced (if known)
-```
-Rules:
-- Latest normalized projections per slate become the canonical pointer: `data/processed/current/projections.parquet` (symlink or copy). All runs reference this pointer.
-- Player IDs **must persist across the entire pipeline**; modules may omit printing them, but IDs must be carried in data frames and artifacts.
+# Run Registry & Artifacts
+- Maintain a registry of all pipeline runs with metadata.
+- Store artifacts in versioned directories for auditability.
 
-## 6) Slate & Keys
-- **SLATE_KEY format**: `YY-MM-DD_HHMMSS` (local tz America/New_York).
-  - Example: `25-09-04_171500`.
-- Every artifact, cache entry, and run lives under its slate key or references it.
+# Config & Secrets
+- Use environment variables for secrets.
+- Store configs in `configs/` with example templates.
+- Avoid committing secrets to the repository.
 
-## 7) Run Registry & Artifacts
-Each run directory must include:
-- `run_meta.json`: module name, config blob, `seed`, `slate_key`, timestamps.
-- `inputs_hash.json`: content hashes of inputs + schema versions.
-- `artifacts/`: lineups, metrics, logs (CSV/Parquet + JSON).
-- `tag.txt` (optional): freeform user label.
-Retention: **Prune non‑tagged runs after N days (TBD)**.
-
-## 8) Config & Secrets
-- Tracked defaults in `/configs/defaults.yaml`.
-- Local overrides in `/configs/local.yaml` (**gitignored**).
-- `.env.example` tracks names; `.env` is **gitignored**. (No third‑party keys now.)
-
-## 9) Testing & CI
-- **Unit**: schema validators, IO adapters, simple E2E smoke of pipeline.
-- **CI gates (blocking)**: `uv sync` → `ruff` → `black --check` → `mypy` → `pytest -q`.
-- New/changed schemas require tests in `tests/schemas/`.
+# Testing & CI
+- Write tests for all new features and bug fixes.
+- Use GitHub Actions for automated linting, testing, and deployment.
+- Ensure tests pass before merging PRs.
 
 ## 10) Branching & PR Rules
 - Branches: `main` (protected), `dev` (integration), feature `feat/<slug>`.
 - PRs only; no direct commits to `main`.
-- PR template must include:
-  - Scope & impacted modules
-  - Data contracts changed? (Y/N + migration note)
-  - Seeds honored? Determinism verified?
-  - Checkboxes: UV sync, lint/format/type/tests passed
-  - Rollback plan
+- PR Discipline: One Task = One PR
 
-## 11) Agent Operating Rules
-- **Allowed to edit**: `src/**`, `tests/**`, `configs/**`, `docs/**`.
-- **Read‑only**: `data/**`, `runs/**`. (Agent must not write here.)
-- **No schema drift**: Any contract change needs PRP + tests.
-- **Change size**: If touching multiple modules or >30 LOC → require PRP; otherwise small fixes allowed.
-- **Commit style**: Conventional commits (`feat:`, `fix:`, `refactor:`, `docs:`…).
+**Problem:**  
+Agents sometimes open a new PR after review feedback instead of updating the original.  
+This fragments history and adds chaos.
 
-### Review checklist (agent pre‑PR)
-- Paths limited to allowed areas
-- Seeds are thread through new functions
-- IO adapters validate & log row counts/nulls/dupes
-- Artifacts include `player_id_dk` unless explicitly trimmed
-- CI passes locally
+**Policy:**  
+1. **One task = one branch = one PR** until merged.  
+2. If changes are requested, the agent **must push commits to the same branch/PR**.  
+3. If scope truly changes → close current PR and open a **new PR with a new PRP ID**, explicitly noting it **supersedes** the old one.  
+4. PR titles must include the PRP ID:  
+   ```
+   <PRP-ID>: <short description>
+   ```
+   Branch naming:  
+   ```
+   agent/<agent-name>/<PRP-ID>
+   ```
 
-## 12) Performance & Determinism
-- Every stochastic step **accepts `seed`** and records it in `run_meta.json`.
-- Prefer pure functions with explicit inputs/outputs.
-- Disk cache allowed in `data/processed/cache/<slate_key>/<adapter>@<version>/` keyed by `(source, version_ts, schema_version)`.
+**Agent Instructions (paste as PR comment):**
+> You are required to update **this PR only**.  
+> Do **not** open a new PR for follow-ups.  
+> - Push commits to the **same branch**  
+> - Mark resolved threads  
+> - Keep total diff under 400 lines  
+> - If scope must change, comment first and wait for approval
 
-## 13) Observability & Metrics
-Log to `artifacts/metrics.json` (per run):
-- row_counts, null_rates, dupe_rates
-- player_id coverage, salary coverage, pos validity
-- wall_time, memory_peak (if available)
-- **legacy_metrics**: optional block for metrics from prior endeavor (carry‑over integration point).
+**Maintainer Checklist:**  
+- If requesting changes, add label `needs-changes` and remind agent: *“Update this PR, don’t open another.”*  
+- If a duplicate PR appears → comment *“duplicate; continue in #<original>”* and close it.  
+- Convert to **Draft** if scope is unclear.  
 
-## 14) Safety Rails
-- Block any write under `data/raw/` or `runs/` **without a slate key** (✓ enforced).
-- No force‑push to `main`. Direct commits to `main` blocked unless owner explicitly requests.
-- Never embed secrets in code/pr.
-- Don’t create new external dependencies without PR note + lockfile update.
+**Automation:**  
+A GitHub Action (`Agent PR Guardian`) can auto-flag duplicate PRs for the same PRP ID and label them `duplicate`.
 
-## 15) House Processes
-- **Projections precedence**: most recent normalized file is canonical.
-- **IDs persistence**: DK IDs must propagate through optimizer → variant builder → field sampler → simulator.
-- **Timestamps everywhere**: files, rows (where relevant), and run dirs.
+# Agent Operating Rules
+- Agents must follow the branching and PR rules strictly.
+- Use descriptive commit messages.
+- Communicate blockers promptly.
 
----
+# Performance & Determinism
+- Ensure pipelines run within expected timeframes.
+- Validate outputs for determinism with each run.
 
-### Open TBDs (owner to fill)
-- Typing strictness policy (global or per‑module)
-- Run pruning policy (days) and retention exceptions
-- Exact set of legacy metrics to port
+# Observability & Metrics
+- Instrument code with logging and metrics.
+- Monitor pipeline health and alert on anomalies.
+
+# Safety Rails
+- Implement rollback plans for failed deployments.
+- Use feature flags for experimental changes.
+
+# House Processes
+- Regularly review and update documentation.
+- Conduct periodic code audits and knowledge sharing sessions.
+
+# Open TBDs
+- Define standards for new data sources.
+- Explore automation for data quality checks.

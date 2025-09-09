@@ -12,9 +12,7 @@ from processes.dk_export.writer import (
 
 
 def _export_row(players: list[str]) -> str:
-    return ",".join(
-        f"{slot} {pid}" for slot, pid in zip(DK_SLOTS_ORDER, players, strict=True)
-    )
+    return ",".join(f"{slot} {pid}" for slot, pid in zip(DK_SLOTS_ORDER, players, strict=True))
 
 
 def test_dk_entries_writer_roundtrip(tmp_path: Path) -> None:

@@ -15,7 +15,13 @@ def load_schema(path: Path) -> dict[str, Any]:
     return schema
 
 
-def validate_obj(schema: dict[str, Any], obj: dict[str, Any], *, schemas_root: Path | None = None, schema_path: Path | None = None) -> None:
+def validate_obj(
+    schema: dict[str, Any],
+    obj: dict[str, Any],
+    *,
+    schemas_root: Path | None = None,
+    schema_path: Path | None = None,
+) -> None:
     store: dict[str, Any] = {}
     base_uri = ""
     if schemas_root is not None:

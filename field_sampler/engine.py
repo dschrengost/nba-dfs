@@ -5,7 +5,7 @@ import random
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -26,9 +26,7 @@ class PositionAllocator:
         mask = ~self.pool["player_id"].isin(taken)
         subset = self.pool[mask]
         allowed = POSITION_ELIGIBILITY.get(slot, set())
-        elig_mask = subset["positions"].apply(
-            lambda s: bool(allowed & set(str(s).split("/")))
-        )
+        elig_mask = subset["positions"].apply(lambda s: bool(allowed & set(str(s).split("/"))))
         return subset[elig_mask]
 
 
@@ -80,9 +78,7 @@ class RejectionSampler:
             )
             if sum(weights) <= 0:
                 weights = [1.0] * len(weights)
-            player = self.rng.choices(elig["player_id"].tolist(), weights=weights, k=1)[
-                0
-            ]
+            player = self.rng.choices(elig["player_id"].tolist(), weights=weights, k=1)[0]
             row = elig.set_index("player_id").loc[player]
             taken.add(player)
             self.salary.add(int(row["salary"]))
@@ -102,9 +98,7 @@ class SamplerEngine:
     out_dir: Path = Path("artifacts")
 
     def generate(self, n: int) -> dict[str, Any]:
-        validator = LineupValidator(
-            salary_cap=self.salary_cap, max_per_team=self.max_per_team
-        )
+        validator = LineupValidator(salary_cap=self.salary_cap, max_per_team=self.max_per_team)
         rng = random.Random(self.seed)
         allocator = PositionAllocator(self.projections)
         field: list[dict[str, Any]] = []
@@ -130,7 +124,7 @@ class SamplerEngine:
     def _write_outputs(self, field_data: Sequence[dict[str, Any]]) -> dict[str, Any]:
         self.out_dir.mkdir(exist_ok=True, parents=True)
         run_id = uuid.uuid4().hex
-        created = datetime.now(timezone.utc).isoformat()
+        created = datetime.now(UTC).isoformat()
         base_path = self.out_dir / "field_base.jsonl"
         with base_path.open("w", encoding="utf-8") as f:
             for row in field_data:
@@ -153,9 +147,7 @@ class SamplerEngine:
         }
 
 
-def run_sampler(
-    projections: pd.DataFrame, config: dict[str, Any], seed: int
-) -> dict[str, Any]:
+def run_sampler(projections: pd.DataFrame, config: dict[str, Any], seed: int) -> dict[str, Any]:
     eng = SamplerEngine(
         projections=projections,
         seed=seed,

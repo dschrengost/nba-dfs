@@ -16,8 +16,7 @@ def _stub_bad_sampler(catalog_df: pd.DataFrame, knobs: dict[str, Any], seed: int
             "origin": "variant",
             "players": players,
             "export_csv_row": ",".join(
-                f"{s} p{i}"
-                for i, s in enumerate(["PG", "SG", "SF", "PF", "C", "G", "F"], start=0)
+                f"{s} p{i}" for i, s in enumerate(["PG", "SG", "SF", "PF", "C", "G", "F"], start=0)
             ),
         }
     ]
@@ -35,9 +34,7 @@ def test_failfast_blocks_writes(tmp_path: Path, monkeypatch):
                 "variant_params": {"_": None},
                 "export_csv_row": ",".join(
                     f"{s} p{i}"
-                    for i, s in enumerate(
-                        ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"], start=0
-                    )
+                    for i, s in enumerate(["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"], start=0)
                 ),
             }
         ]
@@ -58,7 +55,7 @@ def test_failfast_blocks_writes(tmp_path: Path, monkeypatch):
             tag=None,
             input_path=cat_path,
         )
-        assert False, "Expected ValueError due to invalid entrant"
+        raise AssertionError("Expected ValueError due to invalid entrant")
     except ValueError:
         pass
 

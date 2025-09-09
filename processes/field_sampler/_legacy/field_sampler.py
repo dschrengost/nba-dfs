@@ -354,9 +354,7 @@ def _validate_salary_cap(
             violations.append((i, total_salary))
 
     if violations:
-        preview = ", ".join(
-            f"(lineup_idx={i}, salary={sal})" for i, sal in violations[:5]
-        )
+        preview = ", ".join(f"(lineup_idx={i}, salary={sal})" for i, sal in violations[:5])
         raise ValueError(
             f"{name} contains {len(violations)} lineups exceeding ${salary_cap:,} salary cap: {preview}"
         )
@@ -433,9 +431,7 @@ def _validate_lineup_shape(
             continue
     if bad:
         preview = ", ".join(map(str, bad[:5]))
-        raise ValueError(
-            f"{name} has invalid lineups, e.g. {preview} ... (total {len(bad)})"
-        )
+        raise ValueError(f"{name} has invalid lineups, e.g. {preview} ... (total {len(bad)})")
 
 
 def _enforce_dup_cap_inplace(
@@ -473,9 +469,7 @@ def _enforce_dup_cap_inplace(
     def sample_replacement(deny=None):
         """Sample a catalog lineup that won't exceed cap when added."""
         # Build an availability mask over catalog indices
-        avail = np.fromiter(
-            (counts[t] < cap_abs and t != deny for t in cat_tuples), dtype=bool
-        )
+        avail = np.fromiter((counts[t] < cap_abs and t != deny for t in cat_tuples), dtype=bool)
         if not avail.any():
             return None  # nothing available without violating the cap
 
@@ -757,9 +751,7 @@ def _compute_player_exposures(
         for _, pid in lu:
             player_counts[pid] += 1
 
-    return {
-        pid: (count / total_lineups) * 100.0 for pid, count in player_counts.items()
-    }
+    return {pid: (count / total_lineups) * 100.0 for pid, count in player_counts.items()}
 
 
 def _apply_salary_window(catalog, pool, min_sal: int | None, max_sal: int | None):
@@ -838,9 +830,7 @@ def build_field_with_replacement(
 
     # Validate dup_mode
     if dup_mode not in {"multinomial", "uniform"}:
-        raise ValueError(
-            f"dup_mode must be 'multinomial' or 'uniform', got '{dup_mode}'"
-        )
+        raise ValueError(f"dup_mode must be 'multinomial' or 'uniform', got '{dup_mode}'")
 
     # Resolve directory inputs to actual file paths if needed
     catalog_path = _resolve_catalog_path(catalog_path)
@@ -865,9 +855,7 @@ def build_field_with_replacement(
         print(
             f"[FIELD] PID overlap: {overlap}/{len(cat_pids)} (pool_unique={len(pool_pids)}); sample missing: {missing}"
         )
-        if missing and any(
-            isinstance(x, str) and x.endswith(".0") for x in list(missing_set)[:10]
-        ):
+        if missing and any(isinstance(x, str) and x.endswith(".0") for x in list(missing_set)[:10]):
             print(
                 "[HINT] Some catalog PIDs end with '.0'. Normalizing PIDs; if you still see this, check pool ID column."
             )
@@ -889,9 +877,7 @@ def build_field_with_replacement(
         yours = _read_long(your_entries_path)
     else:
         if your_entries_path and not os.path.exists(your_entries_path):
-            print(
-                f"[INFO] your_entries not found at {your_entries_path}; running NO_ENTRIES mode."
-            )
+            print(f"[INFO] your_entries not found at {your_entries_path}; running NO_ENTRIES mode.")
         yours = []
     _validate_catalog(catalog, pool, "catalog")
     if yours:
@@ -916,9 +902,7 @@ def build_field_with_replacement(
             )
 
     if not inject_full_catalog and n_you <= 0:
-        raise ValueError(
-            "your_entries_path is empty or None, and inject_full_catalog=False"
-        )
+        raise ValueError("your_entries_path is empty or None, and inject_full_catalog=False")
 
     field_size = contest_size - n_you
     if not inject_full_catalog and field_size <= 0:
@@ -995,9 +979,7 @@ def build_field_with_replacement(
         cap_abs = None
         original_cap_abs = None
         if cap_pct is not None:
-            cap_abs = max(
-                1, int(math.floor(contest_size * cap_pct))
-            )  # clamp to at least 1
+            cap_abs = max(1, int(math.floor(contest_size * cap_pct)))  # clamp to at least 1
             original_cap_abs = cap_abs
         counts = _cap_counts_pct(counts, cap_abs)
 
@@ -1012,9 +994,7 @@ def build_field_with_replacement(
             additional_needed = n_you - len(field)
             p_arr = np.asarray(p, dtype=float)
             p_arr /= p_arr.sum()
-            additional_indices = rng.choice(
-                len(catalog), size=additional_needed, p=p_arr
-            )
+            additional_indices = rng.choice(len(catalog), size=additional_needed, p=p_arr)
             field.extend([catalog[i] for i in additional_indices])
 
         # Inject your entries by replacement
@@ -1025,9 +1005,7 @@ def build_field_with_replacement(
 
             # Build final entrants list: your entries + remaining field
             replace_idx_set = set(int(x) for x in replace_indices)
-            remaining_field = [
-                lu for j, lu in enumerate(field) if j not in replace_idx_set
-            ]
+            remaining_field = [lu for j, lu in enumerate(field) if j not in replace_idx_set]
             entrants = yours + remaining_field
         else:
             entrants = field
@@ -1269,31 +1247,21 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--catalog", required=True)
     ap.add_argument("--pool", required=True)
-    ap.add_argument(
-        "--yours", default=None, help="Path to your entries CSV file (optional)"
-    )
+    ap.add_argument("--yours", default=None, help="Path to your entries CSV file (optional)")
     ap.add_argument("--contest_size", type=int, required=True)
     ap.add_argument("--entrants", required=True)
     ap.add_argument("--live", required=True)
     ap.add_argument("--seed", type=int, default=23)
     ap.add_argument("--min_salary", type=int, default=None)
     ap.add_argument("--max_salary", type=int, default=None)
-    ap.add_argument(
-        "--dup_mode", default="multinomial", choices=["multinomial", "uniform"]
-    )
+    ap.add_argument("--dup_mode", default="multinomial", choices=["multinomial", "uniform"])
     ap.add_argument("--sport", default="NBA_CLASSIC")
     ap.add_argument("--max_dup_cap_pct", type=float, default=None)
     ap.add_argument("--chalk_threshold", type=float, default=30.0)
     ap.add_argument("--ownership_floor", type=float, default=2.0)
-    ap.add_argument(
-        "--bucket_targets", default=None, help="Path to bucket targets YAML file"
-    )
-    ap.add_argument(
-        "--exposures_csv", default=None, help="Path to write player exposures CSV"
-    )
-    ap.add_argument(
-        "--report_json", default=None, help="Path to write detailed report JSON"
-    )
+    ap.add_argument("--bucket_targets", default=None, help="Path to bucket targets YAML file")
+    ap.add_argument("--exposures_csv", default=None, help="Path to write player exposures CSV")
+    ap.add_argument("--report_json", default=None, help="Path to write detailed report JSON")
     ap.add_argument(
         "--inject_full_catalog",
         action="store_true",
@@ -1306,9 +1274,7 @@ if __name__ == "__main__":
     pool_path = _resolve_pool_path(args.pool)
     # Normalize --yours: treat empty string or missing file as None
     yours_path = args.yours
-    if not yours_path or (
-        isinstance(yours_path, str) and not os.path.exists(yours_path)
-    ):
+    if not yours_path or (isinstance(yours_path, str) and not os.path.exists(yours_path)):
         if yours_path:
             print(
                 f"[INFO] --yours provided but file not found at {yours_path}; proceeding without your entries."

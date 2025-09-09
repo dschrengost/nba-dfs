@@ -38,9 +38,7 @@ def test_verbose_prints_inputs(capsys, tmp_path: Path, monkeypatch):
                 "variant_params": {"_": None},
                 "export_csv_row": ",".join(
                     f"{s} p{i}"
-                    for i, s in enumerate(
-                        ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"], start=0
-                    )
+                    for i, s in enumerate(["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"], start=0)
                 ),
             }
         ]
@@ -78,9 +76,7 @@ def test_schemas_root_override(tmp_path: Path, monkeypatch):
                 "variant_params": {"_": None},
                 "export_csv_row": ",".join(
                     f"{s} p{i}"
-                    for i, s in enumerate(
-                        ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"], start=0
-                    )
+                    for i, s in enumerate(["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"], start=0)
                 ),
             }
         ]

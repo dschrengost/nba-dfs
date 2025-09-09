@@ -2,4 +2,3 @@
 
 Only minimal utilities to support ingest CLI and tests.
 """
-

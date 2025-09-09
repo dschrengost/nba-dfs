@@ -6,7 +6,7 @@ import json
 import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -24,7 +24,7 @@ SCHEMAS_ROOT_DEFAULT = REPO_ROOT / "pipeline" / "schemas"
 
 
 def _utc_now_iso() -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ms = int(now.microsecond / 1000)
     return f"{now.strftime('%Y-%m-%dT%H:%M:%S')}.{ms:03d}Z"
 
@@ -76,7 +76,7 @@ def _load_config(path: Path | None, kv: Sequence[str] | None) -> dict[str, Any]:
 
 
 def _mint_bundle_id(seed_material: str) -> str:
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     short = hashlib.sha256(seed_material.encode("utf-8")).hexdigest()[:8]
     return f"{ts}_{short}"
 
@@ -204,7 +204,7 @@ def run_bundle(
     ingest_manifest = out_root / "runs" / "ingest" / ingest_run / "manifest.json"
     prim_output: str | None = None
     po = reg.loc[idx, "primary_outputs"]
-    if isinstance(po, (list, tuple)) and po:
+    if isinstance(po, list | tuple) and po:
         prim_output = str(po[0])
     stage_results.append(
         StageResult(
@@ -244,9 +244,7 @@ def run_bundle(
         )
     )
     if verbose:
-        print(
-            f"[orchestrator] optimizer run_id={opt_res.get('run_id')}", file=sys.stderr
-        )
+        print(f"[orchestrator] optimizer run_id={opt_res.get('run_id')}", file=sys.stderr)
 
     # 3) Variants
     var_cfg = dict(stages_cfg["variants"])
@@ -272,9 +270,7 @@ def run_bundle(
         )
     )
     if verbose:
-        print(
-            f"[orchestrator] variants run_id={var_res.get('run_id')}", file=sys.stderr
-        )
+        print(f"[orchestrator] variants run_id={var_res.get('run_id')}", file=sys.stderr)
 
     # 4) Field Sampler
     fld_cfg = dict(stages_cfg["field"])
@@ -316,9 +312,7 @@ def run_bundle(
         contest_path = bundle_dir / "contest.json"
         # Persist authored contest block so downstream discovery
         # (and users) can find it later
-        Path(contest_path).write_text(
-            json.dumps(contest_obj, indent=2), encoding="utf-8"
-        )
+        Path(contest_path).write_text(json.dumps(contest_obj, indent=2), encoding="utf-8")
     sim_cfg_path = _write_stage_config(bundle_dir, "sim", sim_cfg)
     sim_res = sim.run_adapter(
         slate_id=slate_id,

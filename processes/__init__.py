@@ -2,4 +2,3 @@
 
 This package intentionally contains headless adapters and CLIs. UI code lives elsewhere.
 """
-

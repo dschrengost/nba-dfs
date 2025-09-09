@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .engine import run_sim
@@ -22,7 +22,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     contest = load_contest(ns.contest)
     results, summary = run_sim(lineups, contest)
 
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     run_dir = ns.outdir / ts
     run_dir.mkdir(parents=True, exist_ok=True)
 

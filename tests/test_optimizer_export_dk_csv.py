@@ -6,8 +6,7 @@ from processes.optimizer.adapter import export_csv_row
 def test_export_csv_row_header_order():
     players = [f"p{i}" for i in range(8)]
     dk_positions_filled = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
+        {"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
     ]
 
     row = export_csv_row(players, dk_positions_filled)

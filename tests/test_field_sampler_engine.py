@@ -14,9 +14,7 @@ from hypothesis import strategies as st  # noqa: E402
 
 
 def _read_base(path: Path) -> list[dict[str, Any]]:
-    return [
-        cast(dict[str, Any], json.loads(line)) for line in path.read_text().splitlines()
-    ]
+    return [cast(dict[str, Any], json.loads(line)) for line in path.read_text().splitlines()]
 
 
 def test_golden_mini_slate(tmp_path: Path) -> None:
@@ -64,9 +62,7 @@ def test_salary_and_team_limits(tmp_path: Path) -> None:
 
 def test_salary_violation_rejected(tmp_path: Path) -> None:
     projections = pd.read_csv(Path("tests/fixtures/mini_slate.csv"))
-    extra = pd.DataFrame(
-        [{"player_id": "bad", "team": "Z", "positions": "PG", "salary": 60000}]
-    )
+    extra = pd.DataFrame([{"player_id": "bad", "team": "Z", "positions": "PG", "salary": 60000}])
     projections = pd.concat([projections, extra], ignore_index=True)
     eng = SamplerEngine(projections, seed=3, out_dir=tmp_path)
     eng.generate(2)

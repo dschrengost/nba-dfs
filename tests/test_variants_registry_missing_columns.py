@@ -24,10 +24,7 @@ def test_registry_missing_columns_error(tmp_path: Path, monkeypatch):
     slate_id = "20251101_NBA"
 
     # Prepare optimizer lineups file (to be selected via registry once fixed)
-    dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    ]
+    dk_pos = [{"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]]
     players = [f"p{i}" for i in range(8)]
     base = {
         "run_id": "rid",

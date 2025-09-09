@@ -1,0 +1,181 @@
+{
+  "engine": "cp_sat",
+  "N": 100,
+  "status": "FEASIBLE",
+  "best_obj": 262132.0,
+  "best_bound": 265299.0,
+  "achieved_gap": 0.012081699296537622,
+  "wall_time_sec": 0.709864,
+  "model": {
+    "num_bool_vars": 338,
+    "num_slots": 8
+  },
+  "params": {
+    "max_time_in_seconds": 0.7,
+    "relative_gap_limit": 0.001,
+    "max_deterministic_time": Infinity,
+    "num_search_workers": 0,
+    "random_seed": 101,
+    "adaptive_time": false,
+    "final_time_cap": 0.7
+  },
+  "pruning": {
+    "enabled": true,
+    "original_players": 116,
+    "kept_players": 100,
+    "reduction_pct": 13.8,
+    "top_pruned": [
+      "Josh Giddey (28.4)",
+      "Scoot Henderson (27.2)",
+      "Ben Simmons (26.9)"
+    ],
+    "locks_kept": 0
+  },
+  "wiring_check": {
+    "run_id": "1757451262",
+    "contract": {
+      "hash": "dfc8951b139e",
+      "rows": 100,
+      "own_min": 0.018000000000000002,
+      "own_max": 0.182,
+      "pct_over_1": 0.0,
+      "own_max_before": 0.182,
+      "scaled_by": 1.0
+    },
+    "objective": {
+      "scale": 1000,
+      "lambda_ui": 8.0,
+      "lambda_eff": 8.0,
+      "lambda_scale_used": 1.0,
+      "points_scaled_total": 3370500,
+      "lambda_penalty_scaled_total": 85942,
+      "ratio": 0.0254982940216585
+    }
+  },
+  "total_players": 116,
+  "matched_players": "116",
+  "data_source": "pre-existing_column",
+  "errors": [],
+  "warnings": [
+    "DK IDs already present in projections data"
+  ],
+  "failed_name_matching": 0,
+  "failed_position_validation": 0,
+  "success_rate": 100.0,
+  "normalization": {
+    "ownership": {
+      "source_col": "own_proj",
+      "scaled_by": 1.0,
+      "scaled_by_100": false,
+      "clip_applied": true,
+      "non_numeric_dropped": 0,
+      "nulls_filled": 0,
+      "max_before": 0.182,
+      "max_after": 0.182,
+      "num_clipped": 0,
+      "cols_diff_post_merge": [],
+      "own_proj_max_post_merge": 0.182
+    }
+  },
+  "constraints_snapshot": {
+    "ownership_enabled": true
+  },
+  "ownership_penalty": {
+    "achieved_offoptimal_pct": 0.0,
+    "enabled": true,
+    "mode": "by_points",
+    "lambda_used": 8.0,
+    "applied": true,
+    "reason": null,
+    "avg_chalk_index": 0.08800873461488358,
+    "avg_penalty_points": 5.632559015352549,
+    "curve_type": "sigmoid",
+    "weight_lambda": 8
+  },
+  "constraints": {
+    "N_lineups": 100,
+    "unique_players": 2,
+    "max_salary": null,
+    "min_salary": null,
+    "global_team_limit": null,
+    "team_limits": {},
+    "lock_ids": [],
+    "ban_ids": [],
+    "proj_min": 0.0,
+    "randomness_pct": 7.0,
+    "cp_sat_params": {},
+    "ownership_penalty": {
+      "enabled": true,
+      "mode": "by_points",
+      "weight_lambda": 8,
+      "curve_type": "sigmoid",
+      "power_k": 1.5,
+      "pivot_p0": 0.2,
+      "curve_alpha": 2.0,
+      "clamp_min": 0.01,
+      "clamp_max": 0.8,
+      "shrink_gamma": 1.0,
+      "target_offoptimal_pct": 0.05,
+      "tol_offoptimal_pct": 0.01
+    },
+    "require_dk_ids": false
+  },
+  "constraints_raw": {
+    "N_lineups": 100,
+    "unique_players": 2,
+    "ownership_penalty": {
+      "enabled": true,
+      "mode": "by_points",
+      "weight_lambda": 8,
+      "curve_type": "sigmoid"
+    },
+    "pruning": {
+      "drop_pct": 0.2
+    },
+    "randomness_pct": 7
+  },
+  "pool": {
+    "lineups": 100,
+    "avg_overlap_players": 4.5783838383838384,
+    "avg_pairwise_jaccard": 0.4082591886228226,
+    "unique_player_count": 36,
+    "exposures": {
+      "36385861": 0.7,
+      "36385843": 0.77,
+      "36385935": 0.88,
+      "36385927": 0.55,
+      "36385559": 0.96,
+      "36385719": 0.15,
+      "36385877": 0.92,
+      "36385774": 0.26,
+      "36385943": 0.45,
+      "36385726": 0.05,
+      "36385812": 0.29,
+      "36385814": 0.18,
+      "36385702": 0.1,
+      "36385792": 0.2,
+      "36385755": 0.24,
+      "36385742": 0.09,
+      "36385786": 0.07,
+      "36385657": 0.19,
+      "36385671": 0.13,
+      "36385904": 0.24,
+      "36385711": 0.05,
+      "36385759": 0.12,
+      "36385806": 0.04,
+      "36385911": 0.13,
+      "36385832": 0.04,
+      "36385624": 0.01,
+      "36385864": 0.01,
+      "36385857": 0.04,
+      "36385668": 0.04,
+      "36385629": 0.01,
+      "36385598": 0.02,
+      "36385589": 0.02,
+      "36385920": 0.01,
+      "36385882": 0.02,
+      "36385853": 0.01,
+      "36385788": 0.01
+    }
+  }
+}

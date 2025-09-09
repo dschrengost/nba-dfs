@@ -36,9 +36,7 @@ def main(argv: list[str] | None = None) -> int:
         field_path = args.field
     sim_df = pd.read_parquet(sim_path)
     field_df = pd.read_parquet(field_path)
-    export_df = build_export_df(
-        sim_df, field_df, top_n=args.top_n, dedupe=not args.no_dedupe
-    )
+    export_df = build_export_df(sim_df, field_df, top_n=args.top_n, dedupe=not args.no_dedupe)
     write_dk_csv(export_df, args.out_csv)
     if args.entries_csv:
         entries_df = pd.read_csv(args.entries_csv)

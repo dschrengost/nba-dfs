@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import random
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +13,7 @@ from validators.lineup_rules import DK_SLOTS_ORDER, LineupValidator
 
 
 def _utc_now() -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
@@ -46,9 +46,7 @@ def build_field(
     attempts = 0
     while len(base) < field_size and attempts < 10000:
         rng.shuffle(players)
-        lineup = list(
-            zip(DK_SLOTS_ORDER, [p["player_id"] for p in players[:8]], strict=False)
-        )
+        lineup = list(zip(DK_SLOTS_ORDER, [p["player_id"] for p in players[:8]], strict=False))
         if validator.validate(lineup, pool):
             base.append({"players": [pid for _, pid in lineup]})
         else:

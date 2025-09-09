@@ -10,10 +10,7 @@ from processes.metrics import adapter as metrics
 
 def _build_simple_field(tmp_path: Path) -> Path:
     players = [f"p{i}" for i in range(8)]
-    dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    ]
+    dk_pos = [{"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]]
     df = pd.DataFrame(
         [
             {
@@ -57,4 +54,3 @@ def test_metrics_run_id_determinism(tmp_path: Path, monkeypatch):
     m2 = metrics.run_adapter(from_sim_run=sim_run_id, out_root=out_root, seed=99)
 
     assert m1["run_id"].split("_")[-1] == m2["run_id"].split("_")[-1]
-

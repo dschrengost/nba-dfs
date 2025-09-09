@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -13,16 +13,13 @@ def test_run_id_determinism(tmp_path: Path, monkeypatch):
     class FakeDT:
         @staticmethod
         def now(tz=None):
-            return datetime(2025, 11, 1, 18, 0, 0, tzinfo=timezone.utc)
+            return datetime(2025, 11, 1, 18, 0, 0, tzinfo=UTC)
 
     monkeypatch.setattr(sim, "datetime", FakeDT)
     monkeypatch.setenv("GPP_SIM_IMPL", "tests.fixtures.stub_simulator:run_sim")
 
     players = [f"p{i}" for i in range(8)]
-    dk_pos = [
-        {"slot": s, "position": s}
-        for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]
-    ]
+    dk_pos = [{"slot": s, "position": s} for s in ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]]
     field = pd.DataFrame(
         [
             {
