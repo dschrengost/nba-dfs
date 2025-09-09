@@ -65,11 +65,9 @@ def _load_sampler() -> RunFieldSamplerFn:
         fn = getattr(mod, fn_name or "run_sampler")
         return cast(RunFieldSamplerFn, fn)
 
-    # No built-in default wired yet; legacy integration may be added later.
-    raise ImportError(
-        "No field sampler implementation available. Provide FIELD_SAMPLER_IMPL or "
-        "monkeypatch _load_sampler in tests."
-    )
+    from processes.field_sampler import engine as _default
+
+    return cast(RunFieldSamplerFn, _default.run_sampler)
 
 
 def load_config(config_path: Path | None, inline_kv: Sequence[str] | None = None) -> dict[str, Any]:
@@ -254,6 +252,12 @@ def run_adapter(
     schemas_root: Path | None = None,
     validate: bool = True,
 ) -> dict[str, Any]:
+    """Run the canonical field sampler pipeline.
+
+    Parameters mirror the CLI options and are documented in the module README.
+    The loaded sampler engine must accept ``(DataFrame, config, seed)`` and
+    return an iterable of entrants plus optional telemetry.
+    """
     created_ts = _utc_now_iso()
     out_root_eff = out_root
 
@@ -341,7 +345,7 @@ def run_adapter(
         entrants = list(entrants_obj)
     else:
         # Attempt to coerce generic iterables of mappings
-        entrants = list(entrants_obj)  # type: ignore[arg-type]
+        entrants = list(entrants_obj)
 
     # Build artifacts in-memory and validate (fail-fast) before any writes
     field_df = _build_field_df(run_id, entrants)
