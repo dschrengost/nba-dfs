@@ -14,6 +14,14 @@ import numpy as np
 import yaml
 from src.config import paths
 
+import warnings
+
+warnings.warn(
+    "processes.field_sampler._legacy.field_sampler is deprecated; use field_sampler.engine",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 ALLOWED_SLOTS = {"PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"}
 
 

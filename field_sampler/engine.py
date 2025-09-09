@@ -100,16 +100,22 @@ class SamplerEngine:
     site: str = "dk"
     slate_id: str = ""
     out_dir: Path = Path("artifacts")
+    variant_catalog: pd.DataFrame | None = None
 
-    def generate(self, n: int) -> dict[str, Any]:
+    def generate(
+        self, n: int, variant_catalog: pd.DataFrame | None = None
+    ) -> dict[str, Any]:
+        variant_catalog = (
+            variant_catalog if variant_catalog is not None else self.variant_catalog
+        )
         validator = LineupValidator(
             salary_cap=self.salary_cap, max_per_team=self.max_per_team
         )
         rng = random.Random(self.seed)
         allocator = PositionAllocator(self.projections)
-        field: list[dict[str, Any]] = []
+        base: list[dict[str, Any]] = []
         attempts = 0
-        while len(field) < n and attempts < n * 1000:
+        while len(base) < n and attempts < n * 1000:
             attempts += 1
             salary = SalaryManager(self.salary_cap)
             teams = TeamLimiter(self.max_per_team)
@@ -121,20 +127,41 @@ class SamplerEngine:
                 list(zip(DK_SLOTS_ORDER, lineup, strict=False)), self.projections
             ):
                 continue
-            field.append({"players": lineup, "source": "public"})
-        meta = self._write_outputs(field)
+            base.append({"players": lineup, "source": "public"})
+        merged = list(base)
+        injected = 0
+        if variant_catalog is not None and not variant_catalog.empty:
+            for _, row in variant_catalog.iterrows():
+                lineup = list(zip(DK_SLOTS_ORDER, list(row["players"]), strict=False))
+                if not validator.validate(lineup, self.projections):
+                    continue
+                merged.append({"players": list(row["players"]), "source": "injected"})
+                injected += 1
+        meta = self._write_outputs(base, merged)
         meta["attempts"] = attempts
-        meta["field_base_count"] = len(field)
+        meta["field_base_count"] = len(base)
+        meta["injected_count"] = injected
+        meta["field_merged_count"] = len(merged)
         return meta
 
-    def _write_outputs(self, field_data: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    def _write_outputs(
+        self,
+        base_data: Sequence[dict[str, Any]],
+        merged_data: Sequence[dict[str, Any]],
+    ) -> dict[str, Any]:
         self.out_dir.mkdir(exist_ok=True, parents=True)
         run_id = uuid.uuid4().hex
         created = datetime.now(timezone.utc).isoformat()
         base_path = self.out_dir / "field_base.jsonl"
         with base_path.open("w", encoding="utf-8") as f:
-            for row in field_data:
+            for row in base_data:
                 f.write(json.dumps(row) + "\n")
+        merged_path = None
+        if merged_data != base_data:
+            merged_path = self.out_dir / "field_merged.jsonl"
+            with merged_path.open("w", encoding="utf-8") as f:
+                for row in merged_data:
+                    f.write(json.dumps(row) + "\n")
         metrics = {
             "run_id": run_id,
             "created_at": created,
@@ -145,12 +172,15 @@ class SamplerEngine:
         }
         metrics_path = self.out_dir / "metrics.json"
         metrics_path.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
-        return {
+        result = {
             "run_id": run_id,
             "field_path": str(base_path),
             "metrics_path": str(metrics_path),
             "created_at": created,
         }
+        if merged_path is not None:
+            result["field_merged_path"] = str(merged_path)
+        return result
 
 
 def run_sampler(
@@ -164,6 +194,7 @@ def run_sampler(
         site=str(config.get("site", "dk")),
         slate_id=str(config.get("slate_id", "")),
         out_dir=Path(config.get("out_dir", "artifacts")),
+        variant_catalog=config.get("variant_catalog"),
     )
     n = int(config.get("field_size", 1))
     return eng.generate(n)

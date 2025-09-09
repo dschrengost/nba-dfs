@@ -2,15 +2,12 @@ import json
 from pathlib import Path
 
 import pandas as pd
-import pytest
 
-from processes.field_sampler import injection_model as fs
+from field_sampler.engine import run_sampler
 from validators.lineup_rules import DK_SLOTS_ORDER, LineupValidator
 
 
-def test_build_field_creates_artifacts(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_build_field_creates_artifacts(tmp_path: Path) -> None:
     projections = pd.DataFrame(
         [
             {"player_id": "p1", "team": "A", "positions": "PG", "salary": 10000},
@@ -25,13 +22,15 @@ def test_build_field_creates_artifacts(
     )
     variant_catalog = pd.DataFrame([{"players": [f"p{i}" for i in range(1, 9)]}])
 
-    monkeypatch.chdir(tmp_path)
-    metrics = fs.build_field(
+    metrics = run_sampler(
         projections,
-        field_size=1,
+        {
+            "field_size": 1,
+            "slate_id": "SLATE",
+            "out_dir": tmp_path / "artifacts",
+            "variant_catalog": variant_catalog,
+        },
         seed=1,
-        slate_id="SLATE",
-        variant_catalog=variant_catalog,
     )
 
     base_path = tmp_path / "artifacts" / "field_base.jsonl"

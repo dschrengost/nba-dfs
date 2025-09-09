@@ -65,11 +65,9 @@ def _load_sampler() -> RunFieldSamplerFn:
         fn = getattr(mod, fn_name or "run_sampler")
         return cast(RunFieldSamplerFn, fn)
 
-    # No built-in default wired yet; legacy integration may be added later.
-    raise ImportError(
-        "No field sampler implementation available. Provide FIELD_SAMPLER_IMPL or "
-        "monkeypatch _load_sampler in tests."
-    )
+    from field_sampler.engine import run_sampler as default_sampler
+
+    return cast(RunFieldSamplerFn, default_sampler)
 
 
 def load_config(
@@ -342,7 +340,20 @@ def run_adapter(
 
     # Execute sampler implementation
     sampler = _load_sampler()
-    res = sampler(catalog_df, cfg_knobs, int(seed))
+    if (
+        sampler.__module__ == "field_sampler.engine"
+        and sampler.__name__ == "run_sampler"
+    ):
+        projections_path = cfg.get("projections_csv") or cfg.get("projections_path")
+        if not projections_path:
+            raise ValueError(
+                "projections_csv required in config when using default sampler"
+            )
+        projections_df = pd.read_csv(Path(projections_path))
+        cfg_knobs["variant_catalog"] = catalog_df
+        res = sampler(projections_df, cfg_knobs, int(seed))
+    else:
+        res = sampler(catalog_df, cfg_knobs, int(seed))
     if isinstance(res, tuple) and len(res) >= 1:
         entrants_obj = res[0]
         telemetry = dict(res[1]) if len(res) > 1 and isinstance(res[1], Mapping) else {}

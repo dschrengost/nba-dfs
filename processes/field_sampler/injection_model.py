@@ -11,6 +11,14 @@ import pandas as pd
 
 from validators.lineup_rules import DK_SLOTS_ORDER, LineupValidator
 
+import warnings
+
+warnings.warn(
+    "processes.field_sampler.injection_model is deprecated; use field_sampler.engine",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 
 def _utc_now() -> str:
     now = datetime.now(timezone.utc)

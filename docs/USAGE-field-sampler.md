@@ -14,6 +14,7 @@ Required knobs:
 * `slate_id` – slate identifier
 * `salary_cap` – contest salary cap (default 50000)
 * `max_per_team` – max players per team (default 4)
+* `variant_catalog` – optional DataFrame of pre-built lineups to inject
 
 ## Running from Python
 
@@ -24,6 +25,14 @@ from field_sampler.engine import SamplerEngine
 projections = pd.read_csv("projections.csv")
 engine = SamplerEngine(projections, seed=42, slate_id="20250101_NBA")
 engine.generate(100)
+```
+
+To inject pre-built variants:
+
+```python
+variant_catalog = pd.read_parquet("variant_catalog.parquet")
+engine = SamplerEngine(projections, seed=42, slate_id="20250101_NBA")
+engine.generate(100, variant_catalog=variant_catalog)
 ```
 
 ## CLI
@@ -49,5 +58,6 @@ python -m tools.sample_field \
 Artifacts are written under `./artifacts/`:
 
 * `field_base.jsonl` – sampled public field
+* `field_merged.jsonl` – field with injected lineups (if any)
 * `metrics.json` – run metadata
 * `audit_fs.md` – summary report
