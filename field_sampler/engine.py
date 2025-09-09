@@ -26,9 +26,14 @@ class PositionAllocator:
         mask = ~self.pool["player_id"].isin(taken)
         subset = self.pool[mask]
         allowed = POSITION_ELIGIBILITY.get(slot, set())
-        elig_mask = subset["positions"].apply(
-            lambda s: bool(allowed & set(str(s).split("/")))
-        )
+
+        def check_position_eligibility(positions_value: Any) -> bool:
+            if pd.isna(positions_value):
+                return False
+            player_positions = set(str(positions_value).split("/"))
+            return bool(allowed & player_positions)
+
+        elig_mask = subset["positions"].apply(check_position_eligibility)
         return subset[elig_mask]
 
 
