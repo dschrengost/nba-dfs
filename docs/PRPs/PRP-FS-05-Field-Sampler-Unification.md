@@ -5,7 +5,7 @@
 - **Commit**: add this PRP to `docs/PRPs/`
 - **PR**: open PR against `main`
 - **Review**: verify alignment with optimizer → variant builder → sampler → simulator pipeline
-- **Rebase & Merge**: squash merge after tests pass, delete feature branch
+
 
 ---
 
