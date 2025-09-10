@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Core orchestration logic for end-to-end pipeline execution."""
+
+from __future__ import annotations
 
 import hashlib
 import json
@@ -115,35 +115,102 @@ def _export_dk_csv(lineups_df: pd.DataFrame, output_path: Path) -> None:
 
 
 def _compute_sim_metrics(sim_results_df: pd.DataFrame) -> dict[str, Any]:
-    """Compute high-level metrics from simulation results."""
+    """Compute ROI distribution, finish percentiles, and duplication stats."""
     if sim_results_df.empty:
         return {
+            "roi": {"mean": 0.0, "stdev": 0.0, "p50": 0.0, "p95": 0.0},
+            "finish_pctiles": {"p1": 0.0, "p10": 0.0, "cash": 0.0},
+            "duplication": {"unique_fraction": 0.0, "dup_fraction": 0.0, "dup_bins": []},
             "roi_mean": 0.0,
             "roi_p50": 0.0,
             "dup_p95": 0.0,
-            "finish_percentiles": [],
         }
 
-    # Basic ROI metrics
-    roi_values = sim_results_df.get("roi", pd.Series(dtype=float))
-    if not roi_values.empty:
-        roi_mean = float(roi_values.mean())
-        roi_p50 = float(roi_values.median())
+    dup_counts = (
+        pd.to_numeric(
+            sim_results_df.get("dup_count", pd.Series(1, index=sim_results_df.index)),
+            errors="coerce",
+        )
+        .fillna(1)
+        .astype(int)
+    )
+    finishes = (
+        pd.to_numeric(
+            sim_results_df.get(
+                "finish",
+                sim_results_df.get(
+                    "rank", sim_results_df.get("finish_position", pd.Series(dtype=int))
+                ),
+            ),
+            errors="coerce",
+        )
+        .fillna(0)
+        .astype(int)
+    )
+    buy_in = float(
+        sim_results_df.get("buy_in", sim_results_df.get("entry_fee", pd.Series(1.0))).iloc[0]
+    )
+
+    if "roi" in sim_results_df.columns:
+        roi_per_lineup = pd.to_numeric(sim_results_df["roi"], errors="coerce").fillna(0.0)
     else:
-        roi_mean = roi_p50 = 0.0
+        prizes = pd.to_numeric(
+            sim_results_df.get("prize", pd.Series(dtype=float)), errors="coerce"
+        ).fillna(0.0)
+        roi_per_lineup = (prizes - buy_in * dup_counts) / (buy_in * dup_counts)
+    roi_entries = roi_per_lineup.repeat(dup_counts)
+    roi_mean = float(roi_entries.mean())
+    roi_stdev = float(roi_entries.std(ddof=0))
+    roi_p50 = float(roi_entries.quantile(0.5))
+    roi_p95 = float(roi_entries.quantile(0.95))
 
-    # Duplication analysis (placeholder)
-    dup_p95 = 0.0  # TODO: Implement duplication analysis
+    total_entries = int(dup_counts.sum())
+    finish_entries: list[int] = []
+    for start, d in zip(finishes, dup_counts, strict=True):
+        finish_entries.extend(range(int(start), int(start) + int(d)))
+    finish_series = pd.Series(finish_entries)
+    p1 = (
+        float((finish_series <= total_entries * 0.01).sum() / total_entries)
+        if total_entries
+        else 0.0
+    )
+    p10 = (
+        float((finish_series <= total_entries * 0.10).sum() / total_entries)
+        if total_entries
+        else 0.0
+    )
+    cash = float((roi_entries > 0).sum() / total_entries) if total_entries else 0.0
 
-    # Finish percentiles (placeholder)
-    finish_percentiles = []  # TODO: Implement finish percentile analysis
+    unique_entries = int(dup_counts[dup_counts == 1].sum())
+    dup_entries = total_entries - unique_entries
+    unique_fraction = unique_entries / total_entries if total_entries else 0.0
+    dup_fraction = dup_entries / total_entries if total_entries else 0.0
+    dup_counts_filtered = dup_counts[dup_counts > 1]
+    if dup_counts_filtered.empty:
+        dup_bins: list[list[float | int]] = []
+    else:
+        dup_bins_series = (
+            sim_results_df[dup_counts > 1]
+            .groupby(dup_counts_filtered)["dup_count"]
+            .sum()
+            .sort_index()
+        )
+        dup_bins = [[int(k), float(v / total_entries)] for k, v in dup_bins_series.items()]
+    dup_p95 = float(dup_counts.quantile(0.95)) if not dup_counts.empty else 0.0
 
-    return {
+    metrics = {
+        "roi": {"mean": roi_mean, "stdev": roi_stdev, "p50": roi_p50, "p95": roi_p95},
+        "finish_pctiles": {"p1": p1, "p10": p10, "cash": cash},
+        "duplication": {
+            "unique_fraction": unique_fraction,
+            "dup_fraction": dup_fraction,
+            "dup_bins": dup_bins,
+        },
         "roi_mean": roi_mean,
         "roi_p50": roi_p50,
         "dup_p95": dup_p95,
-        "finish_percentiles": finish_percentiles,
     }
+    return metrics
 
 
 def _write_summary_markdown(
@@ -476,6 +543,11 @@ def run_orchestrated_pipeline(
 
     # Compute final metrics
     sim_metrics = _compute_sim_metrics(sim_df)
+    metrics_head = {
+        "roi_mean": sim_metrics.get("roi_mean"),
+        "roi_p50": sim_metrics.get("roi_p50"),
+        "dup_p95": sim_metrics.get("dup_p95"),
+    }
     sim_metrics_path.write_text(json.dumps(sim_metrics, indent=2), encoding="utf-8")
 
     # Total timing
@@ -515,6 +587,7 @@ def run_orchestrated_pipeline(
         },
         "timings": timings,
         "git_rev": _get_git_rev(),
+        "metrics_head": metrics_head,
     }
 
     # Validate manifest against schema
@@ -557,9 +630,5 @@ def run_orchestrated_pipeline(
         "run_id": run_id,
         "artifact_root": str(run_dir),
         "manifest_path": str(manifest_path),
-        "metrics_head": {
-            "roi_mean": sim_metrics.get("roi_mean"),
-            "roi_p50": sim_metrics.get("roi_p50"),
-            "dup_p95": sim_metrics.get("dup_p95"),
-        },
+        "metrics_head": metrics_head,
     }

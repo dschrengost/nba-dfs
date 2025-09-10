@@ -99,6 +99,14 @@ properties:
   git_rev:
     type: string
     description: "Git HEAD short hash at runtime"
+  metrics_head:
+    type: object
+    additionalProperties: false
+    properties:
+      roi_mean: { type: number }
+      roi_p50: { type: number }
+      dup_p95: { type: number }
+    required: [roi_mean, roi_p50, dup_p95]
 definitions:
   ModuleInfo:
     type: object
@@ -169,3 +177,4 @@ examples:
       field_sampler_duration_ms: 10000
       gpp_sim_duration_ms: 15000
     git_rev: "deadbeef"
+    metrics_head: { roi_mean: 0.0, roi_p50: 0.0, dup_p95: 1.0 }
