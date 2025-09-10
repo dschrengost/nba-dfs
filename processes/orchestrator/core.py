@@ -184,6 +184,52 @@ All artifacts are stored under the run directory with this run_id.
     output_path.write_text(content, encoding="utf-8")
 
 
+def _resolve_contest_input(contest: str, out_root: Path) -> tuple[Path | None, Path | None]:
+    """Resolve contest identifier to a file path or directory.
+
+    The ``contest`` argument may be either an explicit path to a contest file
+    (csv/parquet/json) or a slug that corresponds to a directory or file under
+    ``out_root/contests``. The gpp simulator requires at least one of
+    ``contest_path`` or ``from_contest_dir`` to locate the contest structure.
+
+    Parameters
+    ----------
+    contest:
+        Contest identifier or path provided by the user.
+    out_root:
+        Root output directory where contest resources may reside.
+
+    Returns
+    -------
+    tuple[Path | None, Path | None]
+        A tuple of ``(contest_path, from_contest_dir)`` suitable for forwarding
+        to ``gpp_sim_adapter.run_adapter``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If no contest file or directory can be resolved.
+    """
+
+    candidate = Path(contest)
+    if candidate.exists():
+        if candidate.is_dir():
+            return None, candidate
+        return candidate, None
+
+    base = out_root / "contests"
+    dir_candidate = base / contest
+    if dir_candidate.is_dir():
+        return None, dir_candidate
+
+    for suffix in (".csv", ".parquet", ".json"):
+        file_candidate = base / f"{contest}{suffix}"
+        if file_candidate.exists():
+            return file_candidate, None
+
+    raise FileNotFoundError(f"Contest input for '{contest}' not found under {base}")
+
+
 def run_orchestrated_pipeline(
     *,
     slate_id: str,
@@ -348,6 +394,7 @@ def run_orchestrated_pipeline(
         print("[orchestrator] Stage 3: Running GPP simulation...")
     stage_start = time.time()
 
+    contest_path, contest_dir = _resolve_contest_input(contest, out_root)
     sim_result = gpp_sim_adapter.run_adapter(
         slate_id=slate_id,
         config_path=sim_config,
@@ -358,8 +405,8 @@ def run_orchestrated_pipeline(
         from_field_run=field_run_id,
         field_path=None,
         variants_path=None,
-        contest_path=None,
-        from_contest_dir=None,
+        contest_path=contest_path,
+        from_contest_dir=contest_dir,
         schemas_root=schemas_root,
         verbose=verbose,
     )
@@ -490,11 +537,11 @@ def run_orchestrated_pipeline(
         "created_ts": _utc_now_iso(),
         "tags": [tag] if tag else [],
     }
-    
+
     # Validate against registry schema
     runs_registry_schema = load_schema(schemas_root / "runs_registry.schema.yaml")
     validate_obj(runs_registry_schema, reg_row, schemas_root=schemas_root)
-    
+
     # Append to registry
     if registry_path.exists():
         existing = pd.read_parquet(registry_path)
