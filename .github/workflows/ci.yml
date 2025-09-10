@@ -7,7 +7,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/uv-action@v3
+
+      # Install uv using the official action
+      - uses: astral-sh/setup-uv@v6
+
       - run: uv python pin 3.11 && uv sync
       - run: uv run ruff check .
       - run: uv run black --check .
