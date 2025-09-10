@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Core orchestration logic for end-to-end pipeline execution."""
+
+from __future__ import annotations
 
 import hashlib
 import json
@@ -126,19 +126,27 @@ def _compute_sim_metrics(sim_results_df: pd.DataFrame) -> dict[str, Any]:
             "dup_p95": 0.0,
         }
 
-    dup_counts = pd.to_numeric(
-        sim_results_df.get("dup_count", pd.Series(1, index=sim_results_df.index)),
-        errors="coerce",
-    ).fillna(1).astype(int)
-    finishes = pd.to_numeric(
-        sim_results_df.get(
-            "finish",
+    dup_counts = (
+        pd.to_numeric(
+            sim_results_df.get("dup_count", pd.Series(1, index=sim_results_df.index)),
+            errors="coerce",
+        )
+        .fillna(1)
+        .astype(int)
+    )
+    finishes = (
+        pd.to_numeric(
             sim_results_df.get(
-                "rank", sim_results_df.get("finish_position", pd.Series(dtype=int))
+                "finish",
+                sim_results_df.get(
+                    "rank", sim_results_df.get("finish_position", pd.Series(dtype=int))
+                ),
             ),
-        ),
-        errors="coerce",
-    ).fillna(0).astype(int)
+            errors="coerce",
+        )
+        .fillna(0)
+        .astype(int)
+    )
     buy_in = float(
         sim_results_df.get("buy_in", sim_results_df.get("entry_fee", pd.Series(1.0))).iloc[0]
     )
@@ -146,7 +154,9 @@ def _compute_sim_metrics(sim_results_df: pd.DataFrame) -> dict[str, Any]:
     if "roi" in sim_results_df.columns:
         roi_per_lineup = pd.to_numeric(sim_results_df["roi"], errors="coerce").fillna(0.0)
     else:
-        prizes = pd.to_numeric(sim_results_df.get("prize", pd.Series(dtype=float)), errors="coerce").fillna(0.0)
+        prizes = pd.to_numeric(
+            sim_results_df.get("prize", pd.Series(dtype=float)), errors="coerce"
+        ).fillna(0.0)
         roi_per_lineup = (prizes - buy_in * dup_counts) / (buy_in * dup_counts)
     roi_entries = roi_per_lineup.repeat(dup_counts)
     roi_mean = float(roi_entries.mean())
@@ -156,21 +166,36 @@ def _compute_sim_metrics(sim_results_df: pd.DataFrame) -> dict[str, Any]:
 
     total_entries = int(dup_counts.sum())
     finish_entries: list[int] = []
-    for start, d in zip(finishes, dup_counts):
+    for start, d in zip(finishes, dup_counts, strict=True):
         finish_entries.extend(range(int(start), int(start) + int(d)))
     finish_series = pd.Series(finish_entries)
-    p1 = float((finish_series <= total_entries * 0.01).sum() / total_entries) if total_entries else 0.0
-    p10 = float((finish_series <= total_entries * 0.10).sum() / total_entries) if total_entries else 0.0
+    p1 = (
+        float((finish_series <= total_entries * 0.01).sum() / total_entries)
+        if total_entries
+        else 0.0
+    )
+    p10 = (
+        float((finish_series <= total_entries * 0.10).sum() / total_entries)
+        if total_entries
+        else 0.0
+    )
     cash = float((roi_entries > 0).sum() / total_entries) if total_entries else 0.0
 
     unique_entries = int(dup_counts[dup_counts == 1].sum())
     dup_entries = total_entries - unique_entries
     unique_fraction = unique_entries / total_entries if total_entries else 0.0
     dup_fraction = dup_entries / total_entries if total_entries else 0.0
-    dup_bins_series = (
-        sim_results_df[dup_counts > 1].groupby(dup_counts)["dup_count"].sum().sort_index()
-    )
-    dup_bins = [[int(k), float(v / total_entries)] for k, v in dup_bins_series.items()]
+    dup_counts_filtered = dup_counts[dup_counts > 1]
+    if dup_counts_filtered.empty:
+        dup_bins: list[list[float | int]] = []
+    else:
+        dup_bins_series = (
+            sim_results_df[dup_counts > 1]
+            .groupby(dup_counts_filtered)["dup_count"]
+            .sum()
+            .sort_index()
+        )
+        dup_bins = [[int(k), float(v / total_entries)] for k, v in dup_bins_series.items()]
     dup_p95 = float(dup_counts.quantile(0.95)) if not dup_counts.empty else 0.0
 
     metrics = {
