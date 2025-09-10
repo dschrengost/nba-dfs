@@ -31,7 +31,7 @@ Deliver the Field Sampler page that mirrors the Optimizer and Variant Builder UX
 1. **POST `/api/field`**
    - Accept: `{ slateId, totalEntries, seed, config, injectRun? }`.
    - Resolve selected variant run (if any) via `injectRun` → load `variant_catalog.parquet` and count rows.
-   - Compute `baseSize = totalEntries - variantCatalogCount`; call Python adapter: `uv run python -m processes.field_sampler.adapter --slate-id <id> --config-kv field_size=<baseSize> seed=<seed> ... --input <variant_catalog>`.
+   - Compute `baseSize = totalEntries - variantCatalogCount`; call Python adapter: `uv run python -m processes.field_sampler.adapter --slate-id <id> --seed <seed> --config-kv field_size=<baseSize> ... --input <variant_catalog>`.
    - Adapter generates base field then injects catalog rows; response: `{ ok, runId, field_path, metrics_path }`.
    - Pattern mirrors optimizer API spawn logic【F:app/api/optimize/route.ts†L27-L63】.
 
@@ -77,7 +77,7 @@ Deliver the Field Sampler page that mirrors the Optimizer and Variant Builder UX
 ## 6. Integration with Unified Pipeline
 
 - Field Sampler is step 3 in pipeline: builds base field, then injects Variant Catalog, before GPP simulation【F:docs/PRPs/PRP-PIPE-00-Pipeline-Overview-20250909-003232.md†L10-L18】.
-- Adapter writes artifacts under `runs/field/<run_id>/` with `field.parquet`, `metrics.parquet`, `manifest.json`, and appends to `registry/runs.parquet` (API surfaces these for UI).
+- Adapter writes artifacts under `runs/<slate>/field/<run_id>/` with `field.parquet`, `metrics.parquet`, `manifest.json`, and appends to `registry/runs.parquet` (API surfaces these for UI).
 - Page should store `run_id` and run metadata in `useRunStore`-like state for later pipeline stages.
 
 ---
