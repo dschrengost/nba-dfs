@@ -1593,7 +1593,11 @@ class NBA_GPP_Simulator:
             # After removing QB team, the first team in stacks will be the team with most players not in QB stack
             secondaryStack = str(stacks[1][0]) + " " + str(stacks[1][1])
             own_s = np.sum(own_p)
-            own_p = np.prod(own_p)
+import numpy as np
+from typing import Any
+
+own_p_arr = np.asarray(own_p, dtype=float)  # type: ignore[no-redef]
+own_p_prod: float = float(np.prod(own_p_arr))
             win_p = round(x["Wins"] / self.num_iterations * 100, 2)
             top10_p = round((x["Top1Percent"] / self.num_iterations) * 100, 2)
             round(x["Cashes"] / self.num_iterations * 100, 2)

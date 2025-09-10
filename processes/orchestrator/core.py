@@ -1,6 +1,6 @@
-"""Core orchestration logic for end-to-end pipeline execution."""
-
 from __future__ import annotations
+
+"""Core orchestration logic for end-to-end pipeline execution."""
 
 import hashlib
 import json
