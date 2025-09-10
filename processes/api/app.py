@@ -15,6 +15,9 @@ from fastapi.responses import JSONResponse
 from processes.api.models import (
     BundleManifest,
     ErrorResponse,
+    MetricsHead,
+    OrchestratedRunRequest,
+    OrchestratedRunResponse,
     OrchestratorRunRequest,
     OrchestratorRunResponse,
     RunRegistryRow,
@@ -22,6 +25,7 @@ from processes.api.models import (
 )
 from processes.dk_export import writer as dk_writer
 from processes.orchestrator import adapter as orch
+from processes.orchestrator.core import run_orchestrated_pipeline
 
 app = FastAPI()
 
@@ -407,3 +411,120 @@ def get_logs(run_id: str, runs_root: str | None = None) -> dict[str, Any]:
         )
     )
     return out
+
+
+# PRP-ORCH-01: One-Command End-to-End Orchestration API
+
+
+@app.post(
+    "/api/runs",
+    response_model=OrchestratedRunResponse | ErrorResponse,
+)  # type: ignore[misc]
+def orchestrated_run(
+    request: OrchestratedRunRequest,
+    response: Response,
+) -> OrchestratedRunResponse | ErrorResponse:
+    """Execute the complete orchestrated pipeline via API.
+
+    This mirrors the CLI interface but provides a web API for the orchestrated pipeline.
+    Body mirrors CLI flags and returns run_id, artifact_path, and metrics_head.
+    """
+    t0 = time.time()
+    logger.info(
+        json.dumps(
+            {
+                "event": "api_enter",
+                "endpoint": "/api/runs",
+                "slate": request.slate,
+                "contest": request.contest,
+                "seed": request.seed,
+            }
+        )
+    )
+
+    try:
+        # Convert string paths to Path objects
+        variants_config = Path(request.variants_config)
+        optimizer_config = Path(request.optimizer_config)
+        sampler_config = Path(request.sampler_config)
+        sim_config = Path(request.sim_config)
+        out_root = Path(request.out_root)
+        schemas_root = Path(request.schemas_root) if request.schemas_root else None
+
+        # Execute the orchestrated pipeline
+        result = run_orchestrated_pipeline(
+            slate_id=request.slate,
+            contest=request.contest,
+            seed=request.seed,
+            variants_config=variants_config,
+            optimizer_config=optimizer_config,
+            sampler_config=sampler_config,
+            sim_config=sim_config,
+            tag=request.tag,
+            out_root=out_root,
+            schemas_root=schemas_root,
+            dry_run=request.dry_run,
+            verbose=request.verbose,
+        )
+
+        if request.dry_run:
+            # For dry runs, return a placeholder response
+            dt = time.time() - t0
+            logger.info(
+                json.dumps(
+                    {
+                        "event": "api_exit",
+                        "endpoint": "/api/runs",
+                        "dt_s": round(dt, 6),
+                        "dry_run": True,
+                    }
+                )
+            )
+            return OrchestratedRunResponse(
+                run_id=result["run_id"],
+                artifact_path="dry_run",
+                metrics_head=MetricsHead(),
+            )
+
+        # Build response from successful run
+        metrics_head_data = result.get("metrics_head", {})
+        metrics_head = MetricsHead(
+            roi_mean=metrics_head_data.get("roi_mean"),
+            roi_p50=metrics_head_data.get("roi_p50"),
+            dup_p95=metrics_head_data.get("dup_p95"),
+        )
+
+        api_response = OrchestratedRunResponse(
+            run_id=result["run_id"],
+            artifact_path=result["artifact_root"],
+            metrics_head=metrics_head,
+        )
+
+        dt = time.time() - t0
+        logger.info(
+            json.dumps(
+                {
+                    "event": "api_exit",
+                    "endpoint": "/api/runs",
+                    "dt_s": round(dt, 6),
+                    "run_id": result["run_id"],
+                }
+            )
+        )
+
+        return api_response
+
+    except Exception as e:
+        response.status_code = 500
+        dt = time.time() - t0
+        logger.error(
+            json.dumps(
+                {
+                    "event": "api_error",
+                    "endpoint": "/api/runs",
+                    "dt_s": round(dt, 6),
+                    "error": str(e),
+                }
+            )
+        )
+        return ErrorResponse(error="internal_error", detail=str(e))
