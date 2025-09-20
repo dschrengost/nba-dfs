@@ -39,6 +39,16 @@ export default function ControlsBar({
   const [minUniques, setMinUniques] = useState<number>(1);
   const [projectionsPath, setProjectionsPath] = useState<string>("");
   const [playerIdsPath, setPlayerIdsPath] = useState<string>("");
+
+  // Input state for validation on blur
+  const [nLineupsInput, setNLineupsInput] = useState<string>(String(nLineups));
+  const [seedInput, setSeedInput] = useState<string>(String(seed));
+  const [minUniquesInput, setMinUniquesInput] = useState<string>(String(minUniques));
+  const [lambdaInput, setLambdaInput] = useState<string>(String(lambdaVal));
+  const [candidatesInput, setCandidatesInput] = useState<string>(String(options.candidates ?? 0));
+  const [teamCapInput, setTeamCapInput] = useState<string>(String(options.teamCap ?? 0));
+  const [salaryCapInput, setSalaryCapInput] = useState<string>(String(options.salaryCap ?? 0));
+  const [minSalaryInput, setMinSalaryInput] = useState<string>(String(options.minSalary ?? 0));
   const [showLoad, setShowLoad] = useState<boolean>(false);
 
   // Persist file paths
@@ -54,6 +64,16 @@ export default function ControlsBar({
       localStorage.setItem("dfs_paths", JSON.stringify({ projectionsPath, playerIdsPath }));
     } catch {}
   }, [projectionsPath, playerIdsPath]);
+
+  // Sync input states when main values change
+  useEffect(() => setNLineupsInput(String(nLineups)), [nLineups]);
+  useEffect(() => setSeedInput(String(seed)), [seed]);
+  useEffect(() => setMinUniquesInput(String(minUniques)), [minUniques]);
+  useEffect(() => setLambdaInput(String(lambdaVal)), [lambdaVal]);
+  useEffect(() => setCandidatesInput(String(options.candidates ?? 0)), [options.candidates]);
+  useEffect(() => setTeamCapInput(String(options.teamCap ?? 0)), [options.teamCap]);
+  useEffect(() => setSalaryCapInput(String(options.salaryCap ?? 0)), [options.salaryCap]);
+  useEffect(() => setMinSalaryInput(String(options.minSalary ?? 0)), [options.minSalary]);
 
   const onRunClick = () =>
     runSolve({
@@ -117,31 +137,43 @@ export default function ControlsBar({
             <div className="flex items-center gap-1">
               <label className="text-xs text-muted-foreground">Lineups:</label>
               <Input
-                className="w-14 h-7 text-xs"
-                type="number"
-                value={nLineups}
-                onChange={(e) => setNLineups(Math.max(1, Math.min(150, Number(e.target.value || 1))))}
-                min={1}
-                max={150}
+                className="w-20 h-7 text-xs"
+                type="text"
+                value={nLineupsInput}
+                onChange={(e) => setNLineupsInput(e.target.value)}
+                onBlur={() => {
+                  const val = Math.max(1, Number(nLineupsInput || 1));
+                  setNLineups(val);
+                  setNLineupsInput(String(val));
+                }}
               />
             </div>
             <div className="flex items-center gap-1">
               <label className="text-xs text-muted-foreground">Seed:</label>
               <Input
-                className="w-12 h-7 text-xs"
-                value={String(seed)}
-                onChange={(e) => setSeed(Number(e.target.value || 0))}
+                className="w-16 h-7 text-xs"
+                type="text"
+                value={seedInput}
+                onChange={(e) => setSeedInput(e.target.value)}
+                onBlur={() => {
+                  const val = Number(seedInput || 0);
+                  setSeed(val);
+                  setSeedInput(String(val));
+                }}
               />
             </div>
             <div className="flex items-center gap-1">
               <label className="text-xs text-muted-foreground">Uniques:</label>
               <Input
-                className="w-12 h-7 text-xs"
-                type="number"
-                value={minUniques}
-                onChange={(e) => setMinUniques(Math.max(0, Math.min(5, Number(e.target.value || 0))))}
-                min={0}
-                max={5}
+                className="w-16 h-7 text-xs"
+                type="text"
+                value={minUniquesInput}
+                onChange={(e) => setMinUniquesInput(e.target.value)}
+                onBlur={() => {
+                  const val = Math.max(0, Number(minUniquesInput || 0));
+                  setMinUniques(val);
+                  setMinUniquesInput(String(val));
+                }}
               />
             </div>
           </div>
@@ -173,12 +205,15 @@ export default function ControlsBar({
                   <div className="flex items-center gap-1">
                     <label className="text-xs text-muted-foreground">λ:</label>
                     <Input
-                      className="w-12 h-6 text-xs"
-                      type="number"
-                      value={lambdaVal}
-                      onChange={(e) => setLambdaVal(Math.max(0, Math.min(50, Number(e.target.value || 0))))}
-                      min={0}
-                      max={50}
+                      className="w-16 h-6 text-xs"
+                      type="text"
+                      value={lambdaInput}
+                      onChange={(e) => setLambdaInput(e.target.value)}
+                      onBlur={() => {
+                        const val = Math.max(0, Number(lambdaInput || 0));
+                        setLambdaVal(val);
+                        setLambdaInput(String(val));
+                      }}
                     />
                   </div>
                   <select
@@ -263,40 +298,56 @@ export default function ControlsBar({
                       <label className="block text-xs text-muted-foreground mb-1">Candidates</label>
                       <Input
                         className="h-6 text-xs"
-                        type="number"
-                        value={Number(options.candidates ?? 0)}
-                        onChange={(e) => setOptions({ candidates: Math.max(0, Number(e.target.value || 0)) })}
-                        min={0}
+                        type="text"
+                        value={candidatesInput}
+                        onChange={(e) => setCandidatesInput(e.target.value)}
+                        onBlur={() => {
+                          const val = Math.max(0, Number(candidatesInput || 0));
+                          setOptions({ candidates: val });
+                          setCandidatesInput(String(val));
+                        }}
                       />
                     </div>
                     <div>
                       <label className="block text-xs text-muted-foreground mb-1">Team Cap</label>
                       <Input
                         className="h-6 text-xs"
-                        type="number"
-                        value={Number(options.teamCap ?? 0)}
-                        onChange={(e) => setOptions({ teamCap: Math.max(0, Number(e.target.value || 0)) })}
-                        min={0}
+                        type="text"
+                        value={teamCapInput}
+                        onChange={(e) => setTeamCapInput(e.target.value)}
+                        onBlur={() => {
+                          const val = Math.max(0, Number(teamCapInput || 0));
+                          setOptions({ teamCap: val });
+                          setTeamCapInput(String(val));
+                        }}
                       />
                     </div>
                     <div>
                       <label className="block text-xs text-muted-foreground mb-1">Salary Cap</label>
                       <Input
                         className="h-6 text-xs"
-                        type="number"
-                        value={Number(options.salaryCap ?? 0)}
-                        onChange={(e) => setOptions({ salaryCap: Math.max(0, Number(e.target.value || 0)) })}
-                        min={0}
+                        type="text"
+                        value={salaryCapInput}
+                        onChange={(e) => setSalaryCapInput(e.target.value)}
+                        onBlur={() => {
+                          const val = Math.max(0, Number(salaryCapInput || 0));
+                          setOptions({ salaryCap: val });
+                          setSalaryCapInput(String(val));
+                        }}
                       />
                     </div>
                     <div>
                       <label className="block text-xs text-muted-foreground mb-1">Min Salary</label>
                       <Input
                         className="h-6 text-xs"
-                        type="number"
-                        value={Number(options.minSalary ?? 0)}
-                        onChange={(e) => setOptions({ minSalary: Math.max(0, Number(e.target.value || 0)) })}
-                        min={0}
+                        type="text"
+                        value={minSalaryInput}
+                        onChange={(e) => setMinSalaryInput(e.target.value)}
+                        onBlur={() => {
+                          const val = Math.max(0, Number(minSalaryInput || 0));
+                          setOptions({ minSalary: val });
+                          setMinSalaryInput(String(val));
+                        }}
                       />
                     </div>
                   </div>
